@@ -1,0 +1,10 @@
+-Výškově vyvážený binární vyhledávací strom
+1) Lexikální analýza (jako konečný automat)
+2) Syntaktická analýza (založená na LL gramatice) ==> metodu rekurzivního sestupu
+-využívá precedenční tabulku
+3)sémantická analýza
+4)tabulka symbolů
+5)vnitřní reprezentace
+6)generování cílového kódu
+7)dokumentace
+8)testování
