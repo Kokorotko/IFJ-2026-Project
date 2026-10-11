@@ -12,7 +12,15 @@
 #include <float.h>
 #include <string.h>
 
-int main() 
+#ifndef CODEGEN //Nedefinuj soubor znova, pokud uz je definovan
+#define CODEGEN
+
+#include "structure.h"
+#include "sematix.h"
+
+void GenerateCode()
 {
-  return 0; 
+    int *outputFile;
 }
+
+#endif

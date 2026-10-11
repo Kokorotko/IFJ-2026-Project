@@ -12,7 +12,30 @@
 #include <float.h>
 #include <string.h>
 
-int main() 
+#include "lex.h"
+#include "syntax.h"
+#include "sematix.h"
+#include "codeGen.h"
+
+int main(int argc, char *argv[]) 
 {
+  if (argc <= 1)
+  {
+    return false; //Something idk
+  }
+  FILE *file = fopen(argv[2], "r");
+  if (file == NULL)
+  {
+    return ERR_REDEFINED; //reading file error
+  }
+  TokenInicializator(file);
+  int errorCode = SyntaxChecker(); //out ADS
+  if (errorCode > 0)
+  {
+    return errorCode;
+  }
+  //Sematix check
+  Semathics();
+  GenerateCode();
   return 0; 
 }
