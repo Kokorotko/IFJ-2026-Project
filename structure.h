@@ -16,7 +16,7 @@
 #include <string.h>
 
 /*Kod generovany Cloud AI: "Vygenerej mi enum pro LEX tokeny potřebné z dokumentace" 
- * Moc efektivni to nebylo 
+ * Moc efektivni to nebylo :(
  */
 typedef enum 
 {
@@ -24,6 +24,7 @@ typedef enum
     T_BLOCKSTART,    // začátek blok
     T_BLOCKEND,      // konec bloku
     T_EOL,           // End of Line
+    T_INDENDATION,   // Indendation
 
     // literály a identifikátor
     T_ID, // jméno proměnné nebo funkce: x, factorial, _tmp
@@ -66,8 +67,11 @@ typedef enum
     T_SEMI,          // ;  odděluje příkazy na jednom řádku
     T_DOT,           // .  v prologu
     T_AT,            // @  anotace @main
-    T_STAR,          // * v prologu
-    T_INTENDATION
+    T_ENDSYMBOL,     // $ pro SA LL Tabulku
+    T_MIDDLESYMBOL,  // < pro SA LL Tabulku
+    P_TERM,          // i/E pro SA LL Tabulku
+    P_NONTERM,       // Neterminal
+    P_UMINUS         // Unarni minus
 } TokType;
 
 typedef struct 
@@ -92,9 +96,17 @@ typedef enum
     ERR_INTERNAL    = 99   // interní chyba překladače (např. malloc)
 } ErrorCode;
 
-typedef enum
+void Error_Handling(ErrorCode errorCode)
 {
+    exit(errorCode);
+}
 
+void MallocChecker(void *pointer)
+{
+    if (pointer == NULL)
+    {
+        Error_Handling(ERR_INTERNAL);
+    }
 }
 
 #endif
