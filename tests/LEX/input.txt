@@ -1,0 +1,4 @@
+while i > 1 do
+    //text
+    result = result * i
+    i = i - 1
