@@ -61,8 +61,11 @@ typedef enum // tohle je pro menší větší rovná se a kombinace
   STATE_PLUS,
   STATE_MINUS,
   STATE_MUL,
+  STATE_DIV,
   STATE_NOT,
-  STATE_NEQ
+  STATE_NEQ,
+  STATE_COMMA,
+  STATE_COLON
 } ScannerState;
 //============================================================================
 //                                   FUNCTIONS
@@ -94,6 +97,10 @@ static TokType KeywordOrIdentifier(const char *text) // vrací řídící strukt
   }
   return T_IDENTIFICATOR;
 }
+static bool IsDigit(int c)
+{
+  return c >= '0' && c <= '9';
+}
 //============================================================================
 //============================================================================
 static FILE *mainFile;     // pointer to file
@@ -102,6 +109,7 @@ static int lineNumber = 1; // line in code start at 1
 void TokenInicializator(FILE *file)
 {
   mainFile = file;
+  lineNumber = 1;
 }
 
 ErrorCode TokenGiver(Token *returnToken)
@@ -119,8 +127,20 @@ ErrorCode TokenGiver(Token *returnToken)
   // static int _counter = 0;
   else
   {
-    c = fgetc(mainFile);
+    do
+    {
+      c = fgetc(mainFile);
+    } while (c == ' ');
+    if (c == '\n')
+    {
+      returnToken->type = T_EOL;
+      returnToken->line = lineNumber;
+      returnToken->val.s = NULL;
 
+      lineNumber++;
+      free(buffer);
+      return ERR_OK;
+    }
     if (c == EOF)
     {
 
@@ -188,30 +208,58 @@ ErrorCode TokenGiver(Token *returnToken)
     } // konec if (IsIdentifierStart(c))
   }
   /*i nomine patris et filii et spiritus sancti */
-  if (c == '=' || c == '<' || c == '>' || c == '+' || c == '-' || c == '*' || c == '!')
+  if (c == '=' || c == '<' || c == '>' ||
+      c == '+' || c == '-' || c == '*' ||
+      c == '/' || c == '!' || c == ',' || c == ':')
   {
     ScannerState state = STATE_START;
 
     while (true)
     {
+#pragma region Switch start_state
       switch (state)
       {
       case STATE_START:
-        if (c == '=')
+        switch (c)
+        {
+        case '=':
           state = STATE_EQ;
-        else if (c == '<')
+          break;
+        case '<':
           state = STATE_LE;
-        else if (c == '>')
+          break;
+        case '>':
           state = STATE_GR;
-        else if (c == '+')
+          break;
+        case '+':
           state = STATE_PLUS;
-        else if (c == '-')
+          break;
+        case '-':
           state = STATE_MINUS;
-        else if (c == '*')
+          break;
+        case '*':
           state = STATE_MUL;
-        else if (c == '!')
+          break;
+        case '/':
+          state = STATE_DIV;
+          break;
+        case '!':
           state = STATE_NOT;
+          break;
+        case ',':
+          state = STATE_COMMA;
+          break;
+        case ':':
+          state = STATE_COLON;
+          break;
+
+        default:
+          break;
+        }
         break;
+#pragma endregion
+
+#pragma region Not_State
       case STATE_NOT:
         c = fgetc(mainFile);
         if (c == EOF && ferror(mainFile))
@@ -228,6 +276,7 @@ ErrorCode TokenGiver(Token *returnToken)
         free(buffer);
         return ERR_LEX;
         break;
+#pragma endregion
       case STATE_PLUS:
         returnToken->type = T_PLUS;
         goto operator_done;
@@ -243,7 +292,15 @@ ErrorCode TokenGiver(Token *returnToken)
       case STATE_NEQ:
         returnToken->type = T_NEQ;
         goto operator_done;
-
+      case STATE_COMMA:
+        returnToken->type = T_COMMA;
+        goto operator_done;
+      case STATE_COLON:
+        returnToken->type = T_COLON;
+        goto operator_done;
+      case STATE_DIV:
+        returnToken->type = T_DIV;
+        goto operator_done;
       case STATE_EQ:
       case STATE_LE:
       case STATE_GR:
@@ -306,7 +363,7 @@ ErrorCode TokenGiver(Token *returnToken)
   }
   fprintf(stderr, "Nerozpoznany znak: ASCII %d\n", c); // kontrola
   free(buffer);
-  return ERR_OK;
+  return ERR_LEX;
   /*i nomine patris et filii et spiritus sancti */
 }
 
@@ -329,6 +386,8 @@ ErrorCode TokenGiver(Token *returnToken)
 
 // update, tohle je jeden z kodů
 /*i nomine patris et filii et spiritus sancti */
+
+/* me rupne to, and lets just say, that by to I mean my peanits*/
 // og code VV
 //  while (c != EOF)
 //     {
