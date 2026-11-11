@@ -1,0 +1,197 @@
+// AI-generated test program (Claude). Prompt: "Vygeneruj mi priklad kodu v IFJ2026 kde se muze objevit vsechno"
+/* Only whitespace and comments may precede the prolog,
+   block comments /* may be nested */ and span several lines. */
+
+import ifj26.*
+
+// ===== entry point: exactly one, no params, Unit; annotation may be on its own line =====
+@main
+def run(): Unit =
+  val five = 5
+  val ten = 10
+  val limit = 50
+  val z = zero()                         // forward calls are fine, callees are defined below
+  val sq = square(five)
+  val tw = twice(five)
+  val ask = askNumber()
+  nop()
+  greet("hello\n")
+  val f = factorial(five)
+  print(f)
+  print("\n")
+  val e = isEven(ten)
+  val o = isOdd(ten)
+  val s = firstSquareOver(limit)
+  printNonNegative(five)
+  literals()
+  operators(five, ten)
+  scopes()
+  builtins()
+  val total = add3(
+    five,
+    ten,
+    limit,
+    )
+  print(total)
+
+// ===== one-line functions =====
+def zero(): Int = 0
+def square(x: Int): Int = x * x
+def twice(x: Int) = x + x                // return type inferred
+def nop(): Unit = ()
+def askNumber() = readInt()              // body is a call, type inferred
+def greet(name: String): Unit = print(name)
+
+// ===== multi-line parameter list with a trailing comma =====
+def add3(
+    a: Int,
+    b: Int,
+    c: Int,
+  ): Int =
+    a + b + c
+
+// ===== while, var, last expression is the return value =====
+def factorial(n: Int): Int =
+  var result = 1
+  var i: Int = n                         // explicit type is optional
+  while i > 1 do
+    result = result * i
+    i = i - 1
+  result
+
+// ===== mutual recursion needs explicit return types; if at the end needs return in all branches =====
+def isEven(n: Int): Int =
+  if n == 0 then
+    return 1
+  else
+    val m = n - 1
+    return isOdd(m)
+
+def isOdd(n: Int): Int =
+  if n == 0 then
+    return 0
+  else
+    val m = n - 1
+    return isEven(m)
+
+// ===== arbitrary indentation widths, return from nested blocks =====
+def firstSquareOver(limit: Int): Int =
+    var i = 0
+    while i < 100 do
+      if i * i > limit then
+         return i
+      else
+         ()
+      i = i + 1
+    return -1
+
+// ===== bare return is allowed only in a function with explicit Unit =====
+def printNonNegative(x: Int): Unit =
+  if x < 0 then
+    return
+  else
+    print(x)
+
+// ===== literals, escapes, strings =====
+def literals(): Unit =
+  val big = 1_000_000                    // underscores between digits
+  val zeroLit = 0
+  val pi = 3.14
+  val half = .5                          // no integer part
+  val kilo = 2e3                         // exponent without a dot
+  val tiny = 1.5E-2
+  val suffixed = 4.0d                    // d or D suffix
+  val u: Unit = ()                       // Unit literal, Unit as a variable type
+  val esc = "tab\t quote\" backslash\\ cr\r newline\n"
+  val ml = """first line
+    second line, \n is not an escape here
+    """
+  val s1 = "apple"
+  val s2 = "banana"
+  val both = s1 + " and " + s2           // String concatenation
+  if s1 < s2 then                        // strings compare lexicographically
+    print(both)
+  else
+    ()
+  print(u)
+
+// ===== operators and expressions =====
+def operators(a: Int, b: Int): Unit =
+  val sum = a + b * 2 - (a - b) / 3      // priorities and parentheses
+  val neg = -a                           // unary minus
+  val negneg = -(-b)
+  val prod = a * -b                      // unary minus after a binary operator
+  val mixed = a * 2.5                    // Int is widened to Double
+  val widened: Double = a                // implicit Int -> Double
+  val fraction = 7 / 2.0
+  val withComment = a /* inline comment */ + b
+  val multi = (a
+      + b
+      + 10)                              // newline inside parentheses is just whitespace
+  /* multi-line block comment
+     on its own lines */
+  a + b                                  // stand-alone expression used as a statement
+  if a < b then
+    print("<")
+  else
+    if a > b then
+      print(">")
+    else
+      ()
+  if a <= b then
+    print("<=")
+  else
+    ()
+  if a >= b then
+    print(">=")
+  else
+    ()
+  if a == b then
+    print("==")
+  else
+    if a != b then
+      print("!=")
+    else
+      ()
+
+// ===== variables, scopes, shadowing, assignments =====
+def scopes(): Unit =
+  var counter = 0
+  val limit: Int = 3
+  var d: Double = 3                      // Int literal widened to Double
+  d = d * 2
+  var a = 1; var b = 2; a = a + b        // statements separated by ;
+// a comment at column 0 inside a block does not change the indentation
+  while counter < limit do               // a comment after the header acts as end of line
+    val inner = counter * 2              // visible only inside the loop body
+    counter = counter + 1
+
+  val x = 1
+  if x < 5 then
+    val x = "shadowed"                   // shadowing in a sub-block
+    print(x)
+  else
+    ()
+  print(x)
+  counter = factorial(limit)             // call on the right-hand side of an assignment
+  factorial(limit)                       // call as a statement, result is discarded
+
+// ===== built-in functions (arguments are only literals or identifiers) =====
+def builtins(): Unit =
+  val line = readLine()
+  val n = readInt()
+  val real = readDouble()
+  val s = toStr(n)
+  val r = toStr(real)                    // doubles are formatted as %.2f
+  val t = toInt(real)
+  val len = strLength(line)
+  val text = "hello world"
+  val start = 0
+  val stop = 5
+  val part = subStr(text, start, stop)
+  val code = ord(part, start)
+  val ch = chr(65)
+  print(s)
+  print(part)
+  print(code)
+  print(ch)
