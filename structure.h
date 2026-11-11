@@ -15,62 +15,63 @@
 #include <float.h>
 #include <string.h>
 
-/*Kod generovany Cloud AI: "Vygenerej mi enum pro LEX tokeny potřebné z dokumentace" */
-typedef enum
+/*Kod generovany Cloud AI: "Vygenerej mi enum pro LEX tokeny potřebné z dokumentace" 
+ * Moc efektivni to nebylo :(
+ */
+typedef enum 
 {
-    // speciální (End of File, End Of Line, )
-    T_EOF,
-    T_EOL,
-    T_BLOCKSTART,
-    T_BLOCKEND,
+    T_EOF,           // End of File
+    T_BLOCKSTART,    // začátek blok
+    T_BLOCKEND,      // konec bloku
+    T_EOL,           // End of Line
+    T_INDENDATION,   // Indendation
+
     // literály a identifikátor
-    T_IDENTIFICATOR,
-    T_INT_LIT,
-    T_DOUBLE_LIT,
-    T_STR_LIT,
+    T_ID, // jméno proměnné nebo funkce: x, factorial, _tmp
+    T_INT_LIT,       // celé číslo: 42, 1_000_000
+    T_DOUBLE_LIT,    // desetinné číslo: 3.14, 1e5, .5
+    T_STRING_LIT,    // řetězec: "ahoj" (i víceřádkový """...""")
+
     // klíčová slova
-    KW_DEF,
-    KW_VAL,
-    KW_VAR,
-    KW_IF,
-    KW_THEN,
-    KW_ELSE,
-    KW_WHILE,
-    KW_DO,
-    KW_RETURN,
-    KW_IMPORT,
-    KW_INT,
-    KW_DOUBLE,
-    KW_STRING,
-    KW_UNIT,
-    KW_BOOL,
-    KW_FOR,
-    KW_TYPE,
-    KW_CASE,
-    KW_CLASS,
-    KW_EXTENSION,
-    KW_LIST,
-    KW_MATCH,
+    KW_DEF,          // def: definice funkce
+    KW_VAL,          // val: nemodifikovatelná proměnná
+    KW_VAR,          // var: modifikovatelná proměnná
+    KW_IF,           // if
+    KW_THEN,         // then
+    KW_ELSE,         // else
+    KW_WHILE,        // while
+    KW_DO,           // do
+    KW_RETURN,       // return
+    KW_IMPORT,       // import: prolog "import ifj26.*"
+    KW_INT,          // typ Int
+    KW_DOUBLE,       // typ Double
+    KW_STRING,       // typ String
+    KW_UNIT,         // typ Unit
+
     // operátory a interpunkce
-    T_PLUS,
-    T_MINUS,
-    T_MUL,
-    T_DIV,
-    T_LT,
-    T_LE,
-    T_GT,
-    T_GE,
-    T_EQ,
-    T_NEQ,
-    T_ASSIGN,
-    T_LPAREN,
-    T_RPAREN,
-    T_COMMA,
-    T_COLON,
-    T_SEMI,
-    T_DOT,
-    T_AT,
-    T_STAR_IMPORT
+    T_PLUS,          // +  sčítání, konkatenace řetězců, unární plus
+    T_MINUS,         // -  odčítání, unární mínus
+    T_MUL,           // *  násobení
+    T_DIV,           // /  dělení
+    T_LT,            // <
+    T_LE,            // <=
+    T_GT,            // >
+    T_GE,            // >=
+    T_EQ,            // == rovnost
+    T_NEQ,           // != nerovnost
+    T_ASSIGN,        // =  přiřazení (i v definici proměnné a funkce)
+    T_LPAREN,        // (
+    T_RPAREN,        // )
+    T_COMMA,         // ,  odděluje parametry a argumenty
+    T_COLON,         // :  před typem (x: Int)
+    T_SEMI,          // ;  odděluje příkazy na jednom řádku
+    T_DOT,           // .  v prologu
+    T_AT,            // @  anotace @main
+    T_ENDSYMBOL,     // $ pro SA LL Tabulku
+    T_MIDDLESYMBOL,  // < pro SA LL Tabulku
+    P_TERM,          // i/E pro SA LL Tabulku
+    P_NONTERM,       // Neterminal
+    P_UMINUS         // Unarni minus
 } TokType;
 
 typedef struct
@@ -99,5 +100,18 @@ typedef enum
     ERR_RUNTIME = 40,   // běhová chyba; překladač ji negeneruje, jen kód cílového programu (EXIT int@40)
     ERR_INTERNAL = 99   // interní chyba překladače (např. malloc)
 } ErrorCode;
+
+void Error_Handling(ErrorCode errorCode)
+{
+    exit(errorCode);
+}
+
+void MallocChecker(void *pointer)
+{
+    if (pointer == NULL)
+    {
+        Error_Handling(ERR_INTERNAL);
+    }
+}
 
 #endif

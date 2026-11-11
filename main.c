@@ -29,11 +29,7 @@ int main(int argc, char *argv[])
     return ERR_REDEFINED; //reading file error
   }
   TokenInicializator(file);
-  int errorCode = SyntaxChecker(); //out ADS
-  if (errorCode > 0)
-  {
-    return errorCode;
-  }
+  SyntaxChecker();
   //Sematix check
   Semathics();
   GenerateCode();
