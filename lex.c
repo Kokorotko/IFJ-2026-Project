@@ -13,22 +13,6 @@
 #include "structure.h"
 #include "lex.h"
 
-typedef enum // tohle je pro menší větší rovná se a kombinace
-{
-  STATE_START,
-  STATE_EQ,
-  STATE_EQEQ,
-  STATE_LE,
-  STATE_LEEQ,
-  STATE_GR,
-  STATE_GREQ,
-  STATE_PLUS,
-  STATE_MINUS,
-  STATE_MUL,
-  STATE_NOT,
-  STATE_NEQ
-} ScannerState;
-
 typedef struct Check
 {
   char *check_array;
@@ -38,7 +22,7 @@ typedef struct Check
 
 Token returnToken;
 
-const Keyword_Check Keyword[] = // Keywords list
+static const Keyword_Check Keyword[] = // Keywords list
     {
         {"def", 3, KW_DEF},
         {"do", 2, KW_DO},
@@ -61,10 +45,29 @@ const Keyword_Check Keyword[] = // Keywords list
         {"for", 3, KW_FOR},
         {"List", 4, KW_LIST},
         {"match", 5, KW_MATCH},
-        {"type", 4, KW_TYPE}
-    };
+        {"type", 4, KW_TYPE}};
 
-
+typedef enum // tohle je pro menší větší rovná se a kombinace
+{
+  STATE_START,
+  STATE_EQ,
+  STATE_EQEQ,
+  STATE_LE,
+  STATE_LEEQ,
+  STATE_GR,
+  STATE_GREQ,
+  STATE_PLUS,
+  STATE_MINUS,
+  STATE_MUL,
+  STATE_DIV,
+  STATE_NOT,
+  STATE_NEQ,
+  STATE_COMMA,
+  STATE_COLON
+} ScannerState;
+//============================================================================
+//                                   FUNCTIONS
+//============================================================================
 bool IsLetter(int c) // is this lil guy a letter, god i hope so
 {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); // is char?
@@ -92,6 +95,10 @@ TokType KeywordOrIdentifier(const char *text) // vrací řídící strukturu
   }
   return T_ID;
 }
+bool IsDigit(int c)
+{
+  return c >= '0' && c <= '9';
+}
 //============================================================================
 //============================================================================
 FILE *mainFile;     // pointer to file
@@ -100,11 +107,12 @@ int lineNumber = 1; // line in code start at 1
 void TokenInicializator(FILE *file)
 {
   mainFile = file;
+  lineNumber = 1;
 }
 
 Token TokenGiver()
 {
-  int c = 0;
+  int c;
   int length = 0;
   char *buffer = malloc(sizeof(char));
   if (buffer == NULL)
@@ -116,9 +124,21 @@ Token TokenGiver()
   // int state = 0;
   // static int _counter = 0;
   else
-  {    
-    c = fgetc(mainFile);
+  {
+    do
+    {
+      c = fgetc(mainFile);
+    } while (c == ' ');
+    if (c == '\n')
+    {
+      returnToken.type = T_EOL;
+      returnToken.line = lineNumber;
+      returnToken.val.s = NULL;
 
+      lineNumber++;
+      free(buffer);
+      return returnToken;
+    }
     if (c == EOF)
     {
 
@@ -127,7 +147,8 @@ Token TokenGiver()
       if (ferror(mainFile))
       {
         ThrowError(ERR_INTERNAL);
-      }      
+      }
+
       returnToken.type = T_EOF;
       returnToken.line = lineNumber;
       returnToken.val.s = NULL;
@@ -185,30 +206,58 @@ Token TokenGiver()
     } // konec if (IsIdentifierStart(c))
   }
   /*i nomine patris et filii et spiritus sancti */
-  if (c == '=' || c == '<' || c == '>' || c == '+' || c == '-' || c == '*' || c == '!')
+  if (c == '=' || c == '<' || c == '>' ||
+      c == '+' || c == '-' || c == '*' ||
+      c == '/' || c == '!' || c == ',' || c == ':')
   {
     ScannerState state = STATE_START;
 
     while (true)
     {
+#pragma region Switch start_state
       switch (state)
       {
       case STATE_START:
-        if (c == '=')
+        switch (c)
+        {
+        case '=':
           state = STATE_EQ;
-        else if (c == '<')
+          break;
+        case '<':
           state = STATE_LE;
-        else if (c == '>')
+          break;
+        case '>':
           state = STATE_GR;
-        else if (c == '+')
+          break;
+        case '+':
           state = STATE_PLUS;
-        else if (c == '-')
+          break;
+        case '-':
           state = STATE_MINUS;
-        else if (c == '*')
+          break;
+        case '*':
           state = STATE_MUL;
-        else if (c == '!')
+          break;
+        case '/':
+          state = STATE_DIV;
+          break;
+        case '!':
           state = STATE_NOT;
+          break;
+        case ',':
+          state = STATE_COMMA;
+          break;
+        case ':':
+          state = STATE_COLON;
+          break;
+
+        default:
+          break;
+        }
         break;
+#pragma endregion
+
+#pragma region Not_State
       case STATE_NOT:
         c = fgetc(mainFile);
         if (c == EOF && ferror(mainFile))
@@ -224,7 +273,8 @@ Token TokenGiver()
         }
         free(buffer);
         ThrowError(ERR_LEX);
-        break;
+        break;  
+#pragma endregion
       case STATE_PLUS:
         returnToken.type = T_PLUS;
         goto operator_done;
@@ -240,7 +290,15 @@ Token TokenGiver()
       case STATE_NEQ:
         returnToken.type = T_NEQ;
         goto operator_done;
-
+      case STATE_COMMA:
+        returnToken.type = T_COMMA;
+        goto operator_done;
+      case STATE_COLON:
+        returnToken.type = T_COLON;
+        goto operator_done;
+      case STATE_DIV:
+        returnToken.type = T_DIV;
+        goto operator_done;
       case STATE_EQ:
       case STATE_LE:
       case STATE_GR:
@@ -303,7 +361,7 @@ Token TokenGiver()
   }
   fprintf(stderr, "Nerozpoznany znak: ASCII %d\n", c); // kontrola
   free(buffer);
-  return returnToken;
+  ThrowError(ERR_LEX);
   /*i nomine patris et filii et spiritus sancti */
 }
 
@@ -325,6 +383,8 @@ Token TokenGiver()
 
 // update, tohle je jeden z kodů
 /*i nomine patris et filii et spiritus sancti */
+
+/* me rupne to, and lets just say, that by to I mean my peanits*/
 // og code VV
 //  while (c != EOF)
 //     {
