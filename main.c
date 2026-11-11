@@ -8,14 +8,13 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <math.h>
-#include <float.h>
-#include <string.h>
 
+#include "structure.h"
 #include "lex.h"
 #include "syntax.h"
-#include "sematix.h"
-#include "codeGen.h"
+
+//#include "sematix.h"
+//#include "codeGen.h"
 
 int main(int argc, char *argv[]) 
 {
@@ -35,7 +34,7 @@ int main(int argc, char *argv[])
     return errorCode;
   }
   //Sematix check
-  Semathics();
-  GenerateCode();
+  //Semathics();
+  //GenerateCode();
   return 0; 
 }

@@ -15,12 +15,13 @@
 #ifndef CODEGEN //Nedefinuj soubor znova, pokud uz je definovan
 #define CODEGEN
 
-#include "structure.h"
-#include "sematix.h"
 
+/*
 void GenerateCode()
 {
     int *outputFile;
 }
+*/
+
 
 #endif

@@ -20,66 +20,28 @@
 #include "lex.h"
 #include "structure.h"
 #include "linkedList.h"
+#include "stack.h"
 
-typedef struct rule
-{
-    int leftSide;
-    int length;
-    int rightSide[MAX_RHS];
-} SyntaxRule;
-
-static const SyntaxRule rules[] =
-{
-    { T_IDENTIFICATOR , 3, { T_IDENTIFICATOR, T_PLUS, T_IDENTIFICATOR } },   // expr2 -> + term expr2
-};
-
-//static SyntaxRules rules;
-
-bool NumberOfPossibleOptions(Head *tokenHead, int *possibleOptions)
-{
-    if (tokenHead == NULL || possibleOptions == NULL)
-    {
-        return false;
-    }
-    return true; //for now
-    //ListSize(&tokenHead);
-    //while ()
-}
-
-int SyntaxChecker(void)
-{
-    Head list; //One could do this by array, but this is more fun :)
-    InitList(&list);
-
-    Token token;
-    do
-    {
-        token = TokenGiver();
-        if (!Insert(&list, token))
-        {
-            FreeList(&list);
-            return ERR_INTERNAL; //Malloc Fail
-        }
-
-        int *possibleOptions = NULL;
-        if (!NumberOfPossibleOptions(&list, possibleOptions))
-        {
-
-        }
-        if (*possibleOptions == 0)
-        {
-            //Found syntax error
-            FreeList(&list);
-            return ERR_SYNTAX;
-        }
-        if (*possibleOptions == 1)
-        {
-            //Found the used rule and we can start from the start
-            FreeList(&list);
-        }
-    } while (token.type != T_EOF); //End of File
-
-    return 0;
-}
+void Next();
+void Peek();
+void Expect(TokType type);
+void ExpectDataType();
+void ParseIf(bool checkIndendation, int indendationLevel);
+void ParseFunction(bool checkIndendation, int indendationLevel);
+void ParseWhile(bool checkIndendation, int indendationLevel);
+void ParseVariable(bool checkIndendation, int indendationLevel);
+void ParseExpressionOrCall(bool checkIndendation, int indendationLevel);
+void ParseExpression();
+void UpdateState(TokType token);
+bool ReduceByRule(StackItem *items, int lenght, StackItem *out);
+char PTableFinder(Stack *stack, TokType token_Input);
+int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput);
+void ParseLine(bool checkIndendation, int indendationLevel);
+void CheckIndendation(bool check, int indendationLevel);
+bool SyntaxChecker();
+void ParseReturn(bool checkIndendation, int indendationLevel);
+bool IsBinaryOperator(TokType token);
+bool IsTerm(TokType token);
+void ParseCall();
 
 #endif
