@@ -7,47 +7,34 @@
 #ifndef STRUCTURE_H // Nedefinuj soubor znova, pokud uz je definovan
 #define STRUCTURE_H
 
-// include
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <math.h>
-#include <float.h>
-#include <string.h>
-
-/*Kod generovany Cloud AI: "Vygenerej mi enum pro LEX tokeny potřebné z dokumentace" 
- * Moc efektivni to nebylo :(
- */
 typedef enum 
 {
-    T_EOF,           // End of File
-    T_BLOCKSTART,    // začátek blok
-    T_BLOCKEND,      // konec bloku
-    T_EOL,           // End of Line
-    T_INDENDATION,   // Indendation
-
+    // speciální (End of File, End Of Line, )
+    T_EOF,
+    T_EOL,
+    T_BLOCKSTART,
+    T_BLOCKEND,
+    T_INDENDATION,
     // literály a identifikátor
-    T_ID, // jméno proměnné nebo funkce: x, factorial, _tmp
-    T_INT_LIT,       // celé číslo: 42, 1_000_000
-    T_DOUBLE_LIT,    // desetinné číslo: 3.14, 1e5, .5
-    T_STRING_LIT,    // řetězec: "ahoj" (i víceřádkový """...""")
-
+    T_ID,
+    T_INT_LIT,
+    T_DOUBLE_LIT,
+    T_STRING_LIT,
     // klíčová slova
-    KW_DEF,          // def: definice funkce
-    KW_VAL,          // val: nemodifikovatelná proměnná
-    KW_VAR,          // var: modifikovatelná proměnná
-    KW_IF,           // if
-    KW_THEN,         // then
-    KW_ELSE,         // else
-    KW_WHILE,        // while
-    KW_DO,           // do
-    KW_RETURN,       // return
-    KW_IMPORT,       // import: prolog "import ifj26.*"
-    KW_INT,          // typ Int
-    KW_DOUBLE,       // typ Double
-    KW_STRING,       // typ String
-    KW_UNIT,         // typ Unit
-
+    KW_DEF,
+    KW_VAL,
+    KW_VAR,
+    KW_IF,
+    KW_THEN,
+    KW_ELSE,
+    KW_WHILE,
+    KW_DO,
+    KW_RETURN,
+    KW_IMPORT,
+    KW_INT,
+    KW_DOUBLE,
+    KW_STRING,
+    KW_UNIT,
     // operátory a interpunkce
     T_PLUS,          // +  sčítání, konkatenace řetězců, unární plus
     T_MINUS,         // -  odčítání, unární mínus
@@ -71,7 +58,17 @@ typedef enum
     T_MIDDLESYMBOL,  // < pro SA LL Tabulku
     P_TERM,          // i/E pro SA LL Tabulku
     P_NONTERM,       // Neterminal
-    P_UMINUS         // Unarni minus
+    P_UMINUS,         // Unarni minus
+
+    //Extensions
+    KW_BOOL,
+    KW_CASE,
+    KW_CLASS,
+    KW_EXTENSION,
+    KW_FOR,
+    KW_LIST,
+    KW_MATCH,
+    KW_TYPE
 } TokType;
 
 typedef struct
@@ -101,17 +98,8 @@ typedef enum
     ERR_INTERNAL = 99   // interní chyba překladače (např. malloc)
 } ErrorCode;
 
-void Error_Handling(ErrorCode errorCode)
-{
-    exit(errorCode);
-}
-
-void MallocChecker(void *pointer)
-{
-    if (pointer == NULL)
-    {
-        Error_Handling(ERR_INTERNAL);
-    }
-}
+void ErrorHandlingSyntax(ErrorCode errorCode, Token token);
+void ThrowError(ErrorCode errorCode);
+void MallocChecker(void *pointer);
 
 #endif

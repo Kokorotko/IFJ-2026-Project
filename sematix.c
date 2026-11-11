@@ -4,9 +4,6 @@
 //xkonvim00 - Martin Konvička
 //xklimat00 - Tomáš Klíma
 
-#ifndef SEMATIX //Nedefinuj soubor znova, pokud uz je definovan
-#define SEMATIX
-
 // include
 #include <stdio.h>
 #include <stdbool.h>
@@ -15,13 +12,11 @@
 #include <float.h>
 #include <string.h>
 
-#include "structure.h"
 #include "syntax.h"
 
-
+/*
 int Semathics()
 {
     return 0;
 }
-
-#endif
+*/
