@@ -11,9 +11,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <math.h>
-#include <float.h>
-#include <string.h>
 
 #include "lex.h"
 #include "structure.h"
@@ -22,29 +19,29 @@
 
 void Next();
 void Peek();
-void Error_Handling_Syntax(ErrorCode errorCode);
+void ErrorHandlingSyntax(ErrorCode errorCode);
 void Expect(int type);
 void ExpectDataType();
-void Parse_If(bool check_Indendation, int indendation_Level);
-void ParseFunction(bool check_Indendation, int indendation_Level);
-void Parse_While(bool check_Indendation, int indendation_Level);
-void Parse_Variable(bool check_Indendation, int indendation_Level);
-void Parse_ExpressionOrCall(bool check_Indendation, int indendation_Level);
-void Parse_Expression();
+void ParseIf(bool checkIndendation, int indendationLevel);
+void ParseFunction(bool checkIndendation, int indendationLevel);
+void ParseWhile(bool checkIndendation, int indendationLevel);
+void ParseVariable(bool checkIndendation, int indendationLevel);
+void ParseExpressionOrCall(bool checkIndendation, int indendationLevel);
+void ParseExpression();
 static void UpdateState(TokType token);
 bool ReduceByRule(StackItem *items, int lenght, StackItem *out);
-char PTable_Finder(Stack *stack, TokType token_Input);
-int PTable_Index_Finder_3000(TokType token_Type, Stack *stack);
-void Parse_Block(bool check_Indendation, int indendation_Level);
-void CheckIndendation(bool check, int indendation_Level);
-bool Syntax_Checker();
-void Parse_Return(bool check_Indendation, int indendation_Level);
-bool Is_Binary_Operator(TokType token);
-bool Is_Term(TokType token);
+char PTableFinder(Stack *stack, TokType token_Input);
+int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput);
+void ParseLine(bool checkIndendation, int indendationLevel);
+void CheckIndendation(bool check, int indendationLevel);
+bool SyntaxChecker();
+void ParseReturn(bool checkIndendation, int indendationLevel);
+bool IsBinaryOperator(TokType token);
+bool IsTerm(TokType token);
 
-static bool previous_Was_Operand = false;
-static bool found_Error = false;
-static int paren_Depth = 0;
+static bool previousWasOperand = false;
+static bool foundError = false;
+static int parenDepth = 0;
 
 //PROCEDURE TABLE
 #pragma region
@@ -57,7 +54,7 @@ static int paren_Depth = 0;
 #define F 'f'   // hotovo ($ vs $)
 #define $ '$'   // End symbol
 #define P_TABLE_SIZE 9
-#define TableMaxRuleSize 3
+#define TABLE_MAX_RULE_SIZE 3
 
 /// @brief LL Tabulka
 //AI: Vygeneruj mi 2D tabulku v C podle téhle SA tabulky (*SA tabulka z dokumentace)
@@ -104,10 +101,10 @@ void Peek()
     }
 }
 
-void Error_Handling_Syntax(ErrorCode errorCode)
+void ErrorHandlingSyntax(ErrorCode errorCode)
 {
-    found_Error = true;
-    printf("Error on line: %i", token.line);
+    foundError = true;
+    fprintf(stderr, "Error on line: %i", token.line);
     exit(errorCode);
 }
 
@@ -117,53 +114,60 @@ void Expect(int type)
 {
     if (token.type != type)
     {
-        Error_Handling_Syntax(ERR_SYNTAX);
+        ErrorHandlingSyntax(ERR_SYNTAX);
     }
     Next();
 }
 
-/// @brief Rozhodne, jestli další token je požadovaný token typu data (INT, DOUBLE, STRING). Může hodit syntax_error
+/// @brief Rozhodne, jestli další token je požadovaný token typu data (INT, DOUBLE, STRING, UNIT).
 void ExpectDataType()
 {
     switch(token.type)
     {
         case KW_INT:
         {
-                return;
+            Expect(KW_INT);
+             return;
         }
         case KW_DOUBLE:
         {
+            Expect(KW_DOUBLE);
             return;
         }
         case KW_STRING:
         {
+            Expect(KW_STRING);
             return;
+        }
+        case KW_UNIT:
+        {
+            Expect(KW_UNIT);
+            return; 
         }
         default: 
         {
-            Error_Handling_Syntax(ERR_SYNTAX);
+            ErrorHandlingSyntax(ERR_SYNTAX);
+            return;
         }
     }
 }
 
 /// @brief 
-/// @param indendation_Level current level of backspaces for blocks
-void Parse_If(bool check_Indendation, int indendation_Level) 
-//if (sum) then 
-//  BLOCK 
-//else
-//  BLOCK
+/// @param indendationLevel current level of backspaces for blocks
+void ParseIf(bool checkIndendation, int indendationLevel) 
 {
-    //CheckIndendation(check_Indendation, indendation_Level);
+    //if (sum) then 
+    //  BLOCK 
+    //else
+    //  BLOCK
+    //CheckIndendation(check_Indendation, indendationLevel);
     Expect(KW_IF);
-    Parse_Expression(); //sum
+    ParseExpression(); //sum
     Expect(KW_THEN);
-    Expect(T_EOL);
-    Parse_Block(check_Indendation, indendation_Level + 1); //BLOCK
-    Expect(T_EOL);
+    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
+    CheckIndendation(checkIndendation, indendationLevel);
     Expect(KW_ELSE);
-    Expect(T_EOL);
-    Parse_Block(check_Indendation, indendation_Level + 1); //BLOCK
+    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
 }
 
 /// @brief Parses a function(without the function ID name)
@@ -179,34 +183,48 @@ void ParseFunction(bool checkIndendation, int indendationLevel)
     Peek();
     if (nextToken.type == T_ID)
     {
-         Parse_Expression(); //sum
+         ParseCall(); //sum
     }
-    Expect(T_RPAREN);
-    Expect(T_EOL);
-    Parse_Block(checkIndendation, indendationLevel + 1); //BLOCK
+    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
     Expect(KW_RETURN);
+}
+
+void ParseCall()
+{
+    //(x,y,name,c * 2)
+    while(true)
+    {
+        ParseExpression();
+        Peek();
+        if (nextToken.type == T_RPAREN)
+        {
+            Expect(T_RPAREN);
+            break; //function call parsed
+        }
+        else Expect(T_COMMA);
+    }
     Expect(T_EOL);
 }
 
 /// @brief Parses a while cycle(without the function ID name)
 /// @param checkIndendation If Indendation should be checked
 /// @param indendationLevel Current Indendation Level
-void Parse_While(bool check_Indendation, int indendation_Level)
+void ParseWhile(bool check_Indendation, int indendationLevel)
 {
     //While (sum) do
     //  BLOCK
-    CheckIndendation(check_Indendation, indendation_Level);
+    //CheckIndendation(check_Indendation, indendationLevel);
     Expect(KW_WHILE);
-    Parse_Expression(); //sum
+    ParseExpression(); //sum
     Expect(KW_DO);
     Expect(T_EOL);
-    Parse_Block(check_Indendation, indendation_Level + 1); //BLOCK
+    ParseLine(check_Indendation, indendationLevel + 1); //BLOCK
 }
 
 /// @brief Parses a variable
 /// @param checkIndendation If Indendation should be checked
 /// @param indendationLevel Current Indendation Level
-void Parse_Variable(bool check_Indendation, int indendation_Level)
+void ParseVariable(bool check_Indendation, int indendationLevel)
 {
     //var ID =
     if (token.type == KW_VAR)
@@ -217,58 +235,53 @@ void Parse_Variable(bool check_Indendation, int indendation_Level)
     {
         Expect(KW_VAL);
     }
-    else Error_Handling_Syntax(ERR_SYNTAX);
+    else 
+    {
+        ErrorHandlingSyntax(ERR_SYNTAX);
+    }
 
     Expect(T_ID);
-    Next();
     if (token.type == T_COLON) //přiřazení var x: INT = *neco*
     {
-        Next();
-        switch (token.type)
-        {
-        case KW_INT:
-            break;
-        case KW_DOUBLE:
-        case KW_STRING:
-        default:
-            Error_Handling_Syntax(ERR_SYNTAX);
-            break;
-        }
+        Expect(T_COLON);
+        ExpectDataType();
         Expect(T_ASSIGN);
+        ParseExpressionOrCall(check_Indendation, indendationLevel);
     }
     else if (token.type == T_ASSIGN) //Assing x = *neco*
     {
         Expect(T_ASSIGN);
-        Parse_ExpressionOrCall(check_Indendation, indendation_Level);
+        ParseExpressionOrCall(check_Indendation, indendationLevel);
     }
-    else Error_Handling_Syntax(ERR_SYNTAX);
+    else ErrorHandlingSyntax(ERR_SYNTAX);
 
 }
 
 
 /// @brief Decides if the next token points to function or expression
 /// @param check_Indendation 
-/// @param indendation_Level 
-void Parse_ExpressionOrCall(bool check_Indendation, int indendation_Level)
+/// @param indendationLevel 
+void ParseExpressionOrCall(bool check_Indendation, int indendationLevel)
 {
     //= *neco*
-    Expect(T_ID);
-    if (nextToken.type == T_LPAREN)
+    if (token.type == T_ID)
     {
-        ParseFunction(check_Indendation, indendation_Level);
+        Peek();
+        if (nextToken.type == T_LPAREN)
+        {
+            ParseFunction(check_Indendation, indendationLevel);
+            return;
+        }
     }
-    else
-    {
-        Parse_Expression();
-    }
+    ParseExpression();
 }
 
 /// @brief Parses expression
-void Parse_Expression()
+void ParseExpression()
 {
     //reset
-    previous_Was_Operand = false;
-    paren_Depth = 0;
+    previousWasOperand = false;
+    parenDepth = 0;
     //set up stack
     Stack *stack = malloc(sizeof(Stack));
     MallocChecker(stack);
@@ -284,35 +297,39 @@ void Parse_Expression()
     Token *middleToken = malloc(sizeof(Token));
     MallocChecker(middleToken);
     middleToken->type = T_MIDDLESYMBOL;
-    endToken->line = 0;
+    middleToken->line = 0;
     while (true)
     {
-        switch(PTable_Finder(stack, token.type))
+        switch(PTableFinder(stack, token.type))
         {
             case S: //Push with <
             {
-                StackItem *temp = malloc(sizeof(StackItem));
-                MallocChecker(temp);
-                UpdateState(token.type);
-                StackTop(stack, temp);
-                if (temp->type == P_NONTERM) //pokud je na vrchu zasobniku E
+                StackItem top; //Vrchol zasobniku
+                StackItem item = token; //Kopie Tokenu
+                StackTop(stack, &top);
+
+                if (item.type == T_MINUS && !previousWasOperand)
                 {
-                    StackPopReturn(stack, temp); //grab the E
+                    item.type = P_UMINUS; // Zaměnit za unární mínus
+                }
+                if (top.type == P_NONTERM) //pokud je na vrchu zasobniku E
+                {
+                    StackPopReturn(stack, &top); //grab the E
                     StackPush(stack, *middleToken); //<
-                    StackPush(stack, *temp); //Push E back
+                    StackPush(stack, top); //Push E back
                 }
                 else 
                 {
                     StackPush(stack, *middleToken); //<
                 }
-                StackPush(stack, token); //Token
-                free(temp);
+                StackPush(stack, item); //Token
+                UpdateState(token.type);
                 Next();
                 break;
             }
             case R: //Reduce (Pop)
             {
-                StackItem items[TableMaxRuleSize]; //without the middle symbol
+                StackItem items[TABLE_MAX_RULE_SIZE]; //without the middle symbol
                 int lenght = 0;
 
                 StackItem *temp = malloc(sizeof(StackItem));
@@ -320,15 +337,22 @@ void Parse_Expression()
                 StackPopReturn(stack, temp);
                 while (temp->type != T_MIDDLESYMBOL)
                 {
-                    if (lenght >= TableMaxRuleSize) Error_Handling_Syntax(ERR_SYNTAX);
-                    if (temp->type == T_ENDSYMBOL) Error_Handling_Syntax(ERR_SYNTAX);
+                    if (lenght >= TABLE_MAX_RULE_SIZE) ErrorHandlingSyntax(ERR_SYNTAX);
+                    if (temp->type == T_ENDSYMBOL) ErrorHandlingSyntax(ERR_SYNTAX);
                     items[lenght] = *temp;
                     lenght++;
                     StackPopReturn(stack, temp);
                 }
                 StackItem *result = malloc(sizeof(StackItem));
-                if (!ReduceByRule(items, lenght, result)) Error_Handling_Syntax(ERR_SYNTAX);
-                StackPush(stack, *result); //always E
+                MallocChecker(result);
+                if (!ReduceByRule(items, lenght, result)) 
+                {
+                    ErrorHandlingSyntax(ERR_SYNTAX);
+                }
+                if (result != NULL)
+                {
+                    StackPush(stack, *result); //always E
+                }
 
                 free(result);
                 free(temp);
@@ -343,14 +367,14 @@ void Parse_Expression()
             }
             case F:
             {
-                if (paren_Depth != 0) Error_Handling_Syntax(ERR_SYNTAX); //Not every ( has its )
+                if (parenDepth != 0) ErrorHandlingSyntax(ERR_SYNTAX); //Not every ( has its )
                 StackItem *temp = malloc(sizeof(StackItem));
                 MallocChecker(temp);
-                if (StackIsEmpty(stack)) Error_Handling_Syntax(ERR_SYNTAX);
+                if (StackIsEmpty(stack)) ErrorHandlingSyntax(ERR_SYNTAX);
                 StackPopReturn(stack, temp);
-                if (temp->type != P_NONTERM) Error_Handling_Syntax(ERR_SYNTAX); //Didnt end on $ E
+                if (temp->type != P_NONTERM) ErrorHandlingSyntax(ERR_SYNTAX); //Didnt end on $ E
                 StackPopReturn(stack, temp);
-                if (temp->type != T_ENDSYMBOL) Error_Handling_Syntax(ERR_SYNTAX); //Didnt end on $
+                if (temp->type != T_ENDSYMBOL) ErrorHandlingSyntax(ERR_SYNTAX); //Didnt end on $
                 free(temp);
                 StackFree(stack);
                 free(middleToken);
@@ -359,7 +383,7 @@ void Parse_Expression()
             }
             case X: //syntax error
             {
-                Error_Handling_Syntax(ERR_SYNTAX);
+                ErrorHandlingSyntax(ERR_SYNTAX);
                 StackFree(stack);
                 free(middleToken);
                 free(endToken);
@@ -368,7 +392,7 @@ void Parse_Expression()
             default:
             {
                 printf("Procedure table error: Not alocated space in the 2D table");
-                Error_Handling_Syntax(ERR_INTERNAL);
+                ErrorHandlingSyntax(ERR_INTERNAL);
                 StackFree(stack);
                 free(middleToken);
                 free(endToken);
@@ -376,26 +400,25 @@ void Parse_Expression()
             }
         }
     }
-    StackFree(stack);
-    free(middleToken);
-    free(endToken);
 }
 
 static void UpdateState(TokType token)
 {
-    previous_Was_Operand = (token == T_INT_LIT  ||
+    previousWasOperand = (token == T_INT_LIT  ||
                             token == T_DOUBLE_LIT ||
                             token == T_STRING_LIT || 
                             token == T_ID ||
                             token == T_RPAREN);
-    if (token == T_LPAREN) paren_Depth++;
-    else if (token == T_RPAREN) paren_Depth--;
+    if (token == T_LPAREN) parenDepth++;
+    else if (token == T_RPAREN) parenDepth--;
 }
 
 bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
 {
+    out->type = NULL; 
+
     // E → i
-    if (lenght == 1 && Is_Term(items[0].type)) 
+    if (lenght == 1 && IsTerm(items[0].type)) 
     { 
         out->type = P_NONTERM;
         return true;
@@ -404,13 +427,15 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
     // E → ( E )
     if (lenght == 3 && items[2].type == T_LPAREN && items[1].type == P_NONTERM && items[0].type == T_RPAREN)
         {
+            out->type = P_NONTERM;
             return true; 
         }
 
     // E → E op E
-    if (lenght == 3 && items[2].type == P_NONTERM && Is_Binary_Operator(items[1].type) && items[0].type == P_NONTERM)
+    if (lenght == 3 && items[2].type == P_NONTERM && IsBinaryOperator(items[1].type) && items[0].type == P_NONTERM)
         { 
             /* typová kontrola, AST uzel */ 
+            out->type = P_NONTERM;
             return true; 
         }
 
@@ -418,12 +443,13 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
     if (lenght == 2 && items[1].type == P_UMINUS && items[0].type == P_NONTERM)
         { 
             /* typ musí být Int/Double */ 
+            out->type = P_NONTERM;
             return true; 
         }
     return false; //Rule not found
 }
 
-bool Is_Binary_Operator(TokType token)
+bool IsBinaryOperator(TokType token)
 {
     switch (token)
     {
@@ -436,7 +462,7 @@ bool Is_Binary_Operator(TokType token)
     }
 }
 
-bool Is_Term(TokType token)
+bool IsTerm(TokType token)
 {
     switch (token)
     {
@@ -451,26 +477,31 @@ bool Is_Term(TokType token)
 /// @param stack //Pointer to stack
 /// @param token_Input //Token
 /// @return 
-char PTable_Finder(Stack *stack, TokType token_Input)
+char PTableFinder(Stack *stack, TokType token_Input)
 {
-    Token *stackToken;
-    StackTop(stack, stackToken);
-    return p_Table[PTable_Index_Finder_3000(stackToken->type, stack)][PTable_Index_Finder_3000(token_Input, stack)];
+    Token stackToken;
+    StackTop(stack, &stackToken);
+    return p_Table[PTableIndexFinder_3000(stackToken.type, false)][PTableIndexFinder_3000(token_Input, true)];
 }
 
 /// @brief Returns the index for the procedure table finder
 /// @param tokenType TokenType
 /// @param stack Pointer to stack
 /// @return 
-int PTable_Index_Finder_3000(TokType tokenType, Stack *stack)
+int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput)
 {
     switch (tokenType)
     {
         case T_MINUS:
         {
-            if (previous_Was_Operand) return 2; //Bi minus
-            else return 0; //Uni Minus
+            if (isIndexInput) //Na inputu je potřeba rozlišit uminus/minus
+            {
+                if (previousWasOperand) return 2; //Bi minus
+                return 0; //Uni Minus
+            }
+            return 2; //Na stacku se už rozlišuje uminus/minus
         }
+        case P_UMINUS: return 0;
         case T_PLUS: return 2;
         case T_MUL: return 1;
         case T_DIV: return 1;
@@ -496,48 +527,49 @@ int PTable_Index_Finder_3000(TokType tokenType, Stack *stack)
 /// @brief Parses a line of code
 /// @param checkIndendation If indendation should be checked
 /// @param indendationLevel Current level of backspaces for blocks
-void Parse_Block(bool check_Indendation, int indendation_Level)
+void ParseLine(bool check_Indendation, int indendationLevel)
 {
-    CheckIndendation(check_Indendation, indendation_Level);
+    CheckIndendation(check_Indendation, indendationLevel);
     while (token.type != T_EOL)
     {
         switch (token.type) 
         {
             case KW_VAR: case KW_VAL: 
             {
-                Parse_Variable(check_Indendation, indendation_Level);  
+                ParseVariable(check_Indendation, indendationLevel);  
                 break;
             }
             case KW_IF:               
             {
-                Parse_If(check_Indendation, indendation_Level);       
+                ParseIf(check_Indendation, indendationLevel);       
                 break;
             }
             case KW_WHILE:            
             {
-                Parse_While(check_Indendation, indendation_Level);    
+                ParseWhile(check_Indendation, indendationLevel);    
                 break;
             }
             case KW_RETURN:           
             {
-                Parse_Return(check_Indendation, indendation_Level); 
+                ParseReturn(check_Indendation, indendationLevel); 
                 break;
             }
             case T_ID:     
             {
-                Parse_ExpressionOrCall(check_Indendation, indendation_Level);
+                ParseExpressionOrCall(check_Indendation, indendationLevel);
                 break;
             }
             default:                 
             {
-                Error_Handling_Syntax(ERR_SYNTAX);
+                ErrorHandlingSyntax(ERR_SYNTAX);
                 break; 
             }
         }
     }
+    Expect(T_EOL); //sežere EOL na konci bloku
 }
 
-void Parse_Return(bool check_Indendation, int indendation_Level)
+void ParseReturn(bool check_Indendation, int indendationLevel)
 {
     Expect(KW_RETURN);
     switch (token.type)
@@ -548,7 +580,7 @@ void Parse_Return(bool check_Indendation, int indendation_Level)
             break;
         //Return *sum*
         default:
-            Parse_ExpressionOrCall(check_Indendation, indendation_Level);
+            ParseExpressionOrCall(check_Indendation, indendationLevel);
             break;
     }
 }
@@ -568,16 +600,15 @@ void CheckIndendation(bool check, int indendationLevel)
     return;
 }
 
-bool Syntax_Checker()
+bool SyntaxChecker()
 {
     Next(); //Very first token
     Expect(KW_IMPORT); //import ifj26.*
 
     while (token.type != T_EOF)
     {
-        Parse_Block(true, 0);
+        ParseLine(true, 0);
     }
-    return found_Error;
+    return foundError;
 }
-
 #endif
