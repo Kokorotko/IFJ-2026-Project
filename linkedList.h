@@ -24,20 +24,4 @@ bool ReadLast(const Head *list, Token *out);
 void FreeList(Head *list);
 int ListLenght(Head *list);
 
-int ListLenght(Head *list)
-{
-    if (list == NULL)
-    {
-        return -1; //ptr is NULL
-    }
-    int lenght = 0;
-    Node *currentNode = list->first;
-    while (currentNode != NULL)
-    {
-        lenght++;
-        currentNode = currentNode->next;
-    }
-    return lenght;
-}
-
 #endif

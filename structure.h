@@ -15,6 +15,7 @@ typedef enum
     T_BLOCKSTART,
     T_BLOCKEND,
     T_INDENDATION,
+    T_ERROR,
     // literály a identifikátor
     T_ID,
     T_INT_LIT,

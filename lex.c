@@ -112,13 +112,18 @@ void TokenInicializator(FILE *file)
 
 Token TokenGiver()
 {
-  int c;
+  int c = 0;
   int length = 0;
   char *buffer = malloc(sizeof(char));
   if (buffer == NULL)
   {
     free(buffer);
     ThrowError(ERR_INTERNAL);
+
+    returnToken.type = T_ERROR;
+    returnToken.line = lineNumber;
+    returnToken.val.s = NULL;
+    return returnToken;
     // internal error, buffer prob. :thumbs_up:
   }
   // int state = 0;
@@ -362,6 +367,11 @@ Token TokenGiver()
   fprintf(stderr, "Nerozpoznany znak: ASCII %d\n", c); // kontrola
   free(buffer);
   ThrowError(ERR_LEX);
+
+  returnToken.type = T_ERROR;
+  returnToken.line = lineNumber;
+  returnToken.val.s = NULL;
+  return returnToken;
   /*i nomine patris et filii et spiritus sancti */
 }
 
