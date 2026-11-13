@@ -16,12 +16,4 @@
 #define CODEGEN
 
 
-/*
-void GenerateCode()
-{
-    int *outputFile;
-}
-*/
-
-
 #endif
