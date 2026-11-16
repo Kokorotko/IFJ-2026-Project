@@ -24,6 +24,7 @@ Token returnToken;
 
 static const Keyword_Check Keyword[] = // Keywords list
     {
+        {"@main", 5, KW_MAIN},
         {"def", 3, KW_DEF},
         {"do", 2, KW_DO},
         {"Double", 6, KW_DOUBLE},

@@ -42,12 +42,12 @@ bool IsStackTopOperand(Stack *s)
 {
     StackItem *tempItem = malloc(sizeof(StackItem));
     MallocChecker (tempItem);
-    StackTop(s, &tempItem);
-    return (tempItem->type == T_INT_LIT  ||
-            tempItem->type == T_DOUBLE_LIT ||
-            tempItem->type == T_STRING_LIT || 
-            tempItem->type == T_ID ||
-            tempItem->type == T_RPAREN);
+    StackTop(s, tempItem);
+    return (tempItem->token.type == T_INT_LIT  ||
+            tempItem->token.type == T_DOUBLE_LIT ||
+            tempItem->token.type == T_STRING_LIT || 
+            tempItem->token.type == T_ID ||
+            tempItem->token.type == T_RPAREN);
 }
 
 bool StackPopReturn(Stack *s, StackItem *item)
@@ -76,13 +76,13 @@ bool StackPop(Stack *s)
     return true;
 }
 
-bool StackTop(Stack *s, StackItem **item) //DOUBLE POINTER WARNING
+bool StackTop(Stack *s, StackItem *item)
 {
     if (s == NULL || s->top == NULL)
     {
         return false;
     }
-    *item = &s->top->data;
+    item = &s->top->data;
     return true;
 }
 

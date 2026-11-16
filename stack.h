@@ -7,7 +7,14 @@
 #ifndef STACK_H
 #define STACK_H
 
-typedef Token StackItem;
+#include "codeStruct.h"
+
+typedef struct {
+    //TokType type;
+    int     line;
+    Token   token;
+    Expression *e; //pro stavění a uchování stromečku
+} StackItem;
 
 typedef struct stack_node
 {
