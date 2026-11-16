@@ -22,6 +22,7 @@ typedef enum
     T_DOUBLE_LIT,
     T_STRING_LIT,
     // klíčová slova
+    KW_MAIN,
     KW_DEF,
     KW_VAL,
     KW_VAR,
