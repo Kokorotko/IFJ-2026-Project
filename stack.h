@@ -35,7 +35,7 @@ bool StackPopReturn(Stack *s, StackItem *item);
 //Odstranění prvku z vrcholu zásobníku, vrací false když je zásobník prázdný
 bool StackPop(Stack *s);
 //Získání hodnoty z vrcholu zásobníku bez odstranění hodnoty
-bool StackTop(Stack *s, StackItem **item);
+bool StackTop(Stack *s, StackItem *item);
 //Kontrola prázdnoty zásobníku
 bool StackIsEmpty(Stack *s);
 //Uvolnění zásobníku z paměti
