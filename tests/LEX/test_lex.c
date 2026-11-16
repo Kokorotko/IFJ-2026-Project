@@ -3,33 +3,36 @@
 #include "../../structure.h"
 #include "../../lex.h"
 
-void TokenInicializator(FILE *file);
-ErrorCode TokenGiver(Token *token);
-
 int main(void)
 {
     TokenInicializator(stdin);
 
     while (1)
     {
-        Token token = {0};
-        ErrorCode error = TokenGiver(&token);
-
-        if (error != ERR_OK)
-        {
-            fprintf(stderr, "Chyba: %d\n", (int)error);
-            return error;
-        }
+        Token token = TokenGiver();
 
         printf("Typ: %d", (int)token.type);
 
-        if (token.type == T_IDENTIFICATOR)
+        if (token.type == T_ID || token.type == T_STRING_LIT)
         {
             printf(", text: %s", token.val.s);
             free(token.val.s);
         }
+        else if (token.type == T_INT_LIT)
+        {
+            printf(", hodnota: %lld", token.val.i);
+        }
+        else if (token.type == T_DOUBLE_LIT)
+        {
+            printf(", hodnota: %.17g", token.val.d);
+        }
 
         putchar('\n');
+
+        if (token.type == T_ERROR)
+        {
+            return EXIT_FAILURE;
+        }
 
         if (token.type == T_EOF)
         {
@@ -37,5 +40,5 @@ int main(void)
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

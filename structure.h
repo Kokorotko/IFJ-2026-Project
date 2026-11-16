@@ -7,7 +7,7 @@
 #ifndef STRUCTURE_H // Nedefinuj soubor znova, pokud uz je definovan
 #define STRUCTURE_H
 
-typedef enum 
+typedef enum
 {
     // speciální (End of File, End Of Line, )
     T_EOF,
@@ -17,9 +17,9 @@ typedef enum
     T_INDENDATION,
     T_ERROR,
     // literály a identifikátor
-    T_ID,
-    T_INT_LIT,
-    T_DOUBLE_LIT,
+    T_ID,         // identifikátor
+    T_INT_LIT,    // čislo int
+    T_DOUBLE_LIT, // číslo double
     T_STRING_LIT,
     // klíčová slova
     KW_MAIN,
@@ -38,31 +38,31 @@ typedef enum
     KW_STRING,
     KW_UNIT,
     // operátory a interpunkce
-    T_PLUS,          // +  sčítání, konkatenace řetězců, unární plus
-    T_MINUS,         // -  odčítání, unární mínus
-    T_MUL,           // *  násobení
-    T_DIV,           // /  dělení
-    T_LT,            // <
-    T_LE,            // <=
-    T_GT,            // >
-    T_GE,            // >=
-    T_EQ,            // == rovnost
-    T_NEQ,           // != nerovnost
-    T_ASSIGN,        // =  přiřazení (i v definici proměnné a funkce)
-    T_LPAREN,        // (
-    T_RPAREN,        // )
-    T_COMMA,         // ,  odděluje parametry a argumenty
-    T_COLON,         // :  před typem (x: Int)
-    T_SEMI,          // ;  odděluje příkazy na jednom řádku
-    T_DOT,           // .  v prologu
-    T_AT,            // @  anotace @main
-    T_ENDSYMBOL,     // $ pro SA LL Tabulku
-    T_MIDDLESYMBOL,  // < pro SA LL Tabulku
-    P_TERM,          // i/E pro SA LL Tabulku
-    P_NONTERM,       // Neterminal
-    P_UMINUS,         // Unarni minus
+    T_PLUS,         // +  sčítání, konkatenace řetězců, unární plus
+    T_MINUS,        // -  odčítání, unární mínus
+    T_MUL,          // *  násobení
+    T_DIV,          // /  dělení
+    T_LT,           // <
+    T_LE,           // <=
+    T_GT,           // >
+    T_GE,           // >=
+    T_EQ,           // == rovnost
+    T_NEQ,          // != nerovnost
+    T_ASSIGN,       // =  přiřazení (i v definici proměnné a funkce)
+    T_LPAREN,       // (
+    T_RPAREN,       // )
+    T_COMMA,        // ,  odděluje parametry a argumenty
+    T_COLON,        // :  před typem (x: Int)
+    T_SEMI,         // ;  odděluje příkazy na jednom řádku
+    T_DOT,          // .  v prologu
+    T_AT,           // @  anotace @main
+    T_ENDSYMBOL,    // $ pro SA LL Tabulku
+    T_MIDDLESYMBOL, // < pro SA LL Tabulku
+    P_TERM,         // i/E pro SA LL Tabulku
+    P_NONTERM,      // Neterminal
+    P_UMINUS,       // Unarni minus
 
-    //Extensions
+    // Extensions
     KW_BOOL,
     KW_CASE,
     KW_CLASS,

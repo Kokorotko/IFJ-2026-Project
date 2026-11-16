@@ -65,7 +65,22 @@ typedef enum // tohle je pro menší větší rovná se a kombinace
   STATE_NEQ,
   STATE_COMMA,
   STATE_COLON
-} ScannerState;
+} ScannerState; // specialní znaky
+
+typedef enum
+{
+  NUM_INTEGER,           // int
+  NUM_DOT,               // desetinná tečka
+  NUM_FRACTION,          // část za desetinnou tečkou
+  NUM_EXP_START,         // račátek exponentui e/E
+  NUM_EXP_SIGN,          //+/-
+  NUM_EXP_DIGITS,        // číslice za e/E
+  NUM_SUFFIX,            // d/D
+  NUM_EXP_UNDERSCORE,    // podtrřítko pro zápui čísel
+  NUM_INTEGER_UNDERCORE, // podtržitko pro int
+  NUM_FRACTION_UNDERCORE // podtržítko pro desetiny
+
+} NumberState; // čísloce
 //============================================================================
 //                                   FUNCTIONS
 //============================================================================
@@ -107,19 +122,19 @@ int lineNumber = 1; // line in code start at 1
 
 void TokenInicializator(FILE *file)
 {
-  mainFile = file;
-  lineNumber = 1;
+  mainFile = file; // nastavv mainFile na File z argumentu
+  lineNumber = 1;  // nastavení řádku na 1
 }
 
 Token TokenGiver()
 {
-  int c = 0;
-  int length = 0;
-  char *buffer = malloc(sizeof(char));
-  if (buffer == NULL)
+  int c = 0;                           // proměnná pro znak
+  int length = 0;                      // délka 0
+  char *buffer = malloc(sizeof(char)); // alokace paměti na 1 znak
+  if (buffer == NULL)                  // ověřeníé nastavení alokace paměti
   {
-    free(buffer);
-    ThrowError(ERR_INTERNAL);
+    free(buffer);             // uvolni alokaci
+    ThrowError(ERR_INTERNAL); // vrať error internal
 
     returnToken.type = T_ERROR;
     returnToken.line = lineNumber;
@@ -134,25 +149,25 @@ Token TokenGiver()
     do
     {
       c = fgetc(mainFile);
-    } while (c == ' ');
-    if (c == '\n')
+    } while (c == ' '); // přeskočení mezer a whitespace
+    if (c == '\n') // konec řádku
     {
-      returnToken.type = T_EOL;
-      returnToken.line = lineNumber;
-      returnToken.val.s = NULL;
+      returnToken.type = T_EOL;      // vrať konec řádku
+      returnToken.line = lineNumber; // vrať číslo
+      returnToken.val.s = NULL;      // vrať NULL pro value tokenu
 
-      lineNumber++;
-      free(buffer);
-      return returnToken;
+      lineNumber++;       // přičti řádek
+      free(buffer);       // uvolni alokaci
+      return returnToken; //  token return
     }
-    if (c == EOF)
+    if (c == EOF) // konec souboru
     {
 
-      free(buffer);
+      free(buffer); // uvolni alokaci
 
-      if (ferror(mainFile))
+      if (ferror(mainFile)) // kontroluje chybu v souboru
       {
-        ThrowError(ERR_INTERNAL);
+        ThrowError(ERR_INTERNAL); // vrať internal error
       }
 
       returnToken.type = T_EOF;
@@ -160,11 +175,11 @@ Token TokenGiver()
       returnToken.val.s = NULL;
       return returnToken;
     }
-    if (IsIdentifierStart(c))
+    if (IsIdentifierStart(c)) // pokud znak může být začátkem identifikátoru
     {
       do
       {
-        char *temp = realloc(buffer, length + 2);
+        char *temp = realloc(buffer, length + 2); // realokace paměti na  znak + ukončující znak
 
         if (temp == NULL)
         {
@@ -172,14 +187,14 @@ Token TokenGiver()
           ThrowError(ERR_INTERNAL);
         }
 
-        buffer = temp;
-        buffer[length] = (char)c;
-        length++;
+        buffer = temp;            // předání paměti
+        buffer[length] = (char)c; // přidání znaku na konec bufferu
+        length++;                 // délka ++
 
-        c = fgetc(mainFile);
-      } while (IsIdentifierPart(c)); // end of do while
+        c = fgetc(mainFile); // další znak
+      } while (IsIdentifierPart(c)); // pokud zna kmůže být součástí identifikátoru
 
-      buffer[length] = '\0'; // last char -> add end char
+      buffer[length] = '\0'; // na konec stringu přidej ukončující znak
       if (c == EOF && ferror(mainFile))
       {
         free(buffer);
@@ -211,10 +226,256 @@ Token TokenGiver()
       return returnToken;
     } // konec if (IsIdentifierStart(c))
   }
+#pragma region Num
+  if (IsDigit(c) || c == '.')
+  {
+    NumberState numState;
+    bool done = false;
+
+    // Počáteční stav nastavíme jen jednou.
+    if (c == '.')
+    {
+      int next = fgetc(mainFile);
+
+      if (next == EOF && ferror(mainFile))
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+      }
+
+      // Podívali jsme se dopředu, znak zase vrátíme.
+      if (next != EOF && ungetc(next, mainFile) == EOF)
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+      }
+
+      if (!IsDigit(next))
+      {
+        returnToken.type = T_DOT;
+        returnToken.line = lineNumber;
+        returnToken.val.s = NULL;
+
+        free(buffer);
+        return returnToken;
+      }
+
+      numState = NUM_DOT;
+    }
+    else
+    {
+      numState = NUM_INTEGER;
+    }
+
+    do
+    {
+      // Uložíme aktuální znak do bufferu.
+      char *temp = realloc(buffer, length + 2);
+
+      if (temp == NULL)
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+      }
+
+      buffer = temp;
+      buffer[length] = (char)c;
+      length++;
+      buffer[length] = '\0';
+
+      // Načteme další znak a rozhodneme, co s ním.
+      c = fgetc(mainFile);
+
+      if (c == EOF && ferror(mainFile))
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+      }
+
+      switch (numState)
+      {
+      case NUM_INTEGER:
+        if (IsDigit(c))
+        {
+          // Zůstáváme v NUM_INTEGER.
+        }
+        else if (c == '.')
+        {
+          numState = NUM_DOT;
+        }
+        else if (c == 'e' || c == 'E')
+        {
+          numState = NUM_EXP_START;
+        }
+        else if (c == '_')
+        {
+          numState = NUM_INTEGER_UNDERCORE;
+        }
+        else
+        {
+          done = true;
+        }
+        break;
+
+      case NUM_DOT:
+        if (IsDigit(c))
+        {
+          numState = NUM_FRACTION;
+        }
+        else
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        break;
+
+      case NUM_FRACTION:
+        if (IsDigit(c))
+        {
+          // Zůstáváme v NUM_FRACTION.
+        }
+        else if (c == 'e' || c == 'E')
+        {
+          numState = NUM_EXP_START;
+        }
+        else if (c == 'd' || c == 'D')
+        {
+          numState = NUM_SUFFIX;
+        }
+        else if (c == '_')
+        {
+          numState = NUM_FRACTION_UNDERCORE;
+        }
+        else
+        {
+          done = true;
+        }
+        break;
+
+      case NUM_EXP_START:
+        if (c == '+' || c == '-')
+        {
+          numState = NUM_EXP_SIGN;
+        }
+        else if (IsDigit(c))
+        {
+          numState = NUM_EXP_DIGITS;
+        }
+        else
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        break;
+
+      case NUM_EXP_SIGN:
+        if (IsDigit(c))
+        {
+          numState = NUM_EXP_DIGITS;
+        }
+        else
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        break;
+      case NUM_EXP_DIGITS:
+        if (IsDigit(c))
+        {
+          numState = NUM_EXP_DIGITS;
+        }
+        else if (c == 'd' || c == 'D')
+        {
+          numState = NUM_SUFFIX;
+        }
+        else if (c == '_')
+        {
+          numState = NUM_EXP_UNDERSCORE;
+        }
+        else
+        {
+          done = true;
+        }
+        break;
+      case NUM_INTEGER_UNDERCORE:
+      case NUM_FRACTION_UNDERCORE:
+      case NUM_EXP_UNDERSCORE:
+      {
+        if (IsDigit(c))
+        {
+          if (numState == NUM_INTEGER_UNDERCORE)
+          {
+            numState = NUM_INTEGER;
+          }
+          else if (numState == NUM_FRACTION_UNDERCORE)
+          {
+            numState = NUM_FRACTION;
+          }
+          else
+          {
+            numState = NUM_EXP_DIGITS;
+          }
+        }
+        else
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        break;
+      }
+      case NUM_SUFFIX:
+
+        done = true;
+        break;
+      }
+    } while (!done);
+
+    // Znak, který už nepatří do čísla, vrátíme.
+    if (c != EOF && ungetc(c, mainFile) == EOF)
+    {
+      free(buffer);
+      ThrowError(ERR_INTERNAL);
+    }
+    // Zpracování čísla -------------------------------------------------------------------------------------
+    int wrtieIndex = 0;
+    for (int readIndex = 0; readIndex < length; readIndex++)
+    {
+      if (buffer[readIndex] != '_')
+      {
+        buffer[wrtieIndex] = buffer[readIndex];
+        wrtieIndex++;
+      }
+    }
+
+    length = wrtieIndex;
+    buffer[length] = '\0';
+
+    returnToken.line = lineNumber;
+
+    if (numState == NUM_INTEGER)
+    {
+      returnToken.type = T_INT_LIT;
+      returnToken.val.i = strtoll(buffer, NULL, 10);
+    }
+    else
+    {
+      if (length > 0 && (buffer[length - 1] == 'd' || buffer[length - 1] == 'D'))
+      {
+        length--;
+        buffer[length] = '\0';
+      }
+      returnToken.type = T_DOUBLE_LIT;
+      returnToken.val.d = strtod(buffer, NULL);
+    }
+    free(buffer);
+    return returnToken;
+  }
+#pragma endregion
+
   /*i nomine patris et filii et spiritus sancti */
   if (c == '=' || c == '<' || c == '>' ||
       c == '+' || c == '-' || c == '*' ||
-      c == '/' || c == '!' || c == ',' || c == ':')
+      c == '/' || c == '!' || c == ',' || c == ':') // podmínka pro specialní znaky, od nich se odvíjí stavy pro tokeny
   {
     ScannerState state = STATE_START;
 
@@ -279,7 +540,7 @@ Token TokenGiver()
         }
         free(buffer);
         ThrowError(ERR_LEX);
-        break;  
+        break;
 #pragma endregion
       case STATE_PLUS:
         returnToken.type = T_PLUS;
