@@ -79,7 +79,7 @@ typedef struct
     int line;
     union
     {
-        long long i;
+        int i;
         double d;
         char *s;
     } val; // Vybírá se z jednoho (long long, double or char)

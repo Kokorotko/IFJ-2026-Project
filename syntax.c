@@ -19,7 +19,6 @@
 
 
 static bool previousWasOperand = false;
-static bool foundError = false;
 static int parenDepth = 0;
 static int currentIndendationLevel = 0; //global počet odsazení
 
@@ -56,8 +55,8 @@ static const char p_Table[P_TABLE_SIZE][P_TABLE_SIZE] = {
 
 static Token token;
 static Token nextToken;
-bool tokenPeaked = false;
-bool imported = false;
+static bool tokenPeaked = false;
+static bool imported = false;
 
 void Next()
 {
@@ -69,7 +68,7 @@ void Next()
     else
     {
         token = TokenGiver();
-        if (imported && token.type == KW_IMPORT)
+        if (imported && token.type == KW_IMPORT) //Kontrola více Import
         {
             ErrorHandlingSyntax(ERR_SYNTAX, token);
         }
@@ -82,7 +81,7 @@ void Peek()
     {
         tokenPeaked = true;
         nextToken = TokenGiver();
-        if (imported && token.type == KW_IMPORT)
+        if (imported && nextToken.type == KW_IMPORT) //Kontrola více Import
         {
             ErrorHandlingSyntax(ERR_SYNTAX, token);
         }
@@ -172,7 +171,7 @@ Expression *ParseCall()
     while(token.type != T_RPAREN) //empty == ID()
     {
         e->data.call.argc++; //up argument count
-        e->data.call.args = realloc(e->data.call.args, e->data.call.argc * sizeof(Expression)); //argc za
+        e->data.call.args = realloc(e->data.call.args, e->data.call.argc * sizeof(Expression *)); //argc za
         MallocChecker(e->data.call.args);
         e->data.call.args[e->data.call.argc - 1] = ParseExpression(); //argc jede 1+ a pole 0+
         if (token.type == T_COMMA) 
@@ -182,8 +181,6 @@ Expression *ParseCall()
         else break; //Tot vše
     }
     Expect(T_RPAREN);
-    ExpectEndOfLine();
-    Expect(KW_RETURN);
     return e;
 }
 
@@ -233,7 +230,6 @@ Statement *ParseVariable()
     {
         Expect(T_COLON); //sežere :
         s->data.ST_vardef.type = ExpectDataType();
-        ExpectDataType();
         Expect(T_ASSIGN);        
         Expression *e = ParseExpressionOrCall();
         s->data.ST_vardef.init = e;
@@ -288,12 +284,11 @@ FuncDef *ParseDefFunction()
     int indendation = currentIndendationLevel;
     FuncDef *fd = NewFunction();
     Expect(KW_DEF);
-    fd->name = CopyName();
-    Expect(T_ID);
+    fd->name = ExpectName();
     Expect(T_LPAREN);
     while (token.type != T_RPAREN) //parametry
     {
-        fd->params = realloc(fd->params, sizeof(fd->params) * (fd->paramCount + 1)); //Zvetsit param
+        fd->params = realloc(fd->params, sizeof(Param) * (fd->paramCount + 1)); //Zvetsit param
         MallocChecker(fd->params);
         //ID:TYP
         fd->params[fd->paramCount].name = ExpectName(); //jmeno parametru        
@@ -321,7 +316,13 @@ FuncDef *ParseDefFunction()
 
     switch (token.type)
     {
-        case T_ID: //= výraz-nebo-volání
+        case T_EOL: //odsazený-blok
+        {
+            ExpectEndOfLine();
+            fd->body = ParseBlock(indendation);
+            break;
+        }
+        case T_ID: case T_INT_LIT: case T_DOUBLE_LIT: case T_STRING_LIT: case T_LPAREN: case T_MINUS: //= výraz-nebo-volání
         {
             Statement *s = NewStatement(ST_EXPR);
             s->data.expression = ParseExpressionOrCall();
@@ -330,12 +331,7 @@ FuncDef *ParseDefFunction()
             ExpectEndOfLine();
             break;
         }
-        case T_EOL: //odsazený-blok
-        {
-            ExpectEndOfLine();
-            fd->body = ParseBlock(indendation);
-            break;
-        }
+
         default: //something is missing
         {
             ErrorHandlingSyntax(ERR_SYNTAX, token);
@@ -413,6 +409,7 @@ Expression *ParseExpression()
                 StackPush(stack, item); //Token
                 UpdateState(token.type);
                 Next();
+                free(top);
                 break;
             }
             case R: //Reduce (Pop)
@@ -611,15 +608,15 @@ Block *NewBlock()
 /// @return 
 char PTableFinder(Stack *stack, TokType tokenInput)
 {
-    StackItem *top = NULL;
-    StackTop(stack, top);
-    TokType stackType = top->token.type;
+    StackItem top;
+    StackTop(stack, &top);
+    TokType stackType = top.token.type;
     if (stackType == P_NONTERM) //skip E
     {
         StackItem saved;
         StackPopReturn(stack, &saved); //vyndat E
-        StackTop(stack, top);
-        stackType = top->token.type;
+        StackTop(stack, &top);
+        stackType = top.token.type;
         StackPush(stack, saved); //vrátit E zpět
     }
     return p_Table[PTableIndexFinder_3000(stackType, false)][PTableIndexFinder_3000(tokenInput, true)];
@@ -653,7 +650,11 @@ int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput)
         case T_EQ: return 4;
         case T_NEQ: return 4;
         case T_LPAREN: return 5;
-        case T_RPAREN: return 6;
+        case T_RPAREN: 
+        {
+            if (parenDepth == 0 && isIndexInput) return 8; //první je ) pro vstupní
+            return 6;
+        }
         //Operand
         case T_INT_LIT: return 7;
         case T_DOUBLE_LIT: return 7;
@@ -674,6 +675,7 @@ Statement *ParseLine()
         case KW_VAR: case KW_VAL: 
         {
             s = ParseVariable();  
+            ExpectEndOfLine();
             break;
         }
         case KW_IF:               
@@ -689,6 +691,7 @@ Statement *ParseLine()
         case KW_RETURN:           
         {
             s = ParseReturn(); 
+            ExpectEndOfLine();
             break;
         }
         case T_ID:     
@@ -719,7 +722,6 @@ Statement *ParseLine()
             break; 
         }
     }
-    ExpectEndOfLine(); //sežere EOL na konci bloku
     return s;
 }
 
@@ -744,10 +746,8 @@ Block *ParseBlock(int parentIndendation) //0
     Block *b = NewBlock();
 
     int indendation = currentIndendationLevel;
-    indendation = NumberOfIntendations(); //1
     while (token.type != T_EOF && currentIndendationLevel == indendation)
     {
-        currentIndendationLevel = NumberOfIntendations();
         BlockAppend(b, ParseLine());
     }
     return b;
@@ -762,11 +762,9 @@ Statement *ParseReturn()
         //Return
         case T_EOL:
             s->data.retur = NULL;
-            ExpectEndOfLine();
             break;
         case T_EOF:       
             s->data.retur = NULL;   
-            ExpectEndOfLine();
             break;
 
         //Return *sum*
@@ -791,34 +789,30 @@ int NumberOfIntendations()
 /// @brief Kontroluje vstup pomocí tokenů a vrací
 /// @param program Vrací "strom" pro Sematiku a CodeGen
 /// @return Vrací jestli je vstup syntakticky správně
-bool SyntaxChecker(FuncDef **program)
+void SyntaxChecker(FuncDef **program)
 {
     *program = NULL;
     FuncDef *last = NULL;
 
     Next(); //První token
-    currentIndendationLevel = NumberOfIntendations(); //Přeskočí prázdné řádky a komentáře před prologem
     
-    while (token.type != KW_IMPORT) //Ignoruje cokoliv před Importem
-    {
-        Next();
-    }
     Expect(KW_IMPORT);
     imported = true;
     ExpectEndOfLine();
 
     while (token.type != T_EOF)
     {
-        if (token.type != KW_DEF || currentIndendationLevel != 0) //Na nejvyšší úrovni jsou jen funkce bez odsazení
-        {
-            ErrorHandlingSyntax(ERR_SYNTAX, token);
-        }
         bool nextIsMain = false;
         if (token.type == KW_MAIN)
         {
             nextIsMain = true;
             Next();
         }
+
+        if (token.type != KW_DEF || currentIndendationLevel != 0) //Na nejvyšší úrovni jsou jen funkce bez odsazení
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+        }        
         FuncDef *fd = ParseDefFunction();
         if (nextIsMain)
         {
@@ -828,12 +822,12 @@ bool SyntaxChecker(FuncDef **program)
         else last->next = fd;
         last = fd;
     }
-    return foundError;
 }
 
 Expression *NewExpression(ExpressionEnum type)
 {
-    Expression *ex = malloc(sizeof(Expression));
+    Expression *ex = calloc(1, sizeof(Expression));
+    MallocChecker(ex);
     ex->line = token.line;
     ex->type = type;
     return ex;
@@ -875,31 +869,6 @@ void BlockAppend(Block *b, Statement *s)
         b->first = s;
     }
     b->last = s; 
-}
-
-/// @brief Parses from DataType Token to DataType Sematix
-/// @return 
-DataType ParseType() 
-{
-    DataType type = DT_NONE;
-    switch (token.type) 
-    {
-        case KW_INT: 
-            type = DT_INT;
-            break;   
-        case KW_DOUBLE: 
-            type = DT_DOUBLE; 
-            break;
-        case KW_STRING: 
-            type = DT_STRING; 
-            break;  
-        case KW_UNIT: 
-            type = DT_UNIT; 
-            break;
-        default: ErrorHandlingSyntax(ERR_SYNTAX, token);
-    }
-    Next(); 
-    return type;
 }
 
 /// @brief Okopíruje název z tokenu

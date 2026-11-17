@@ -49,7 +49,7 @@ Statement *ParseLine();
 Block *ParseBlock(int parentIndendation);
 Statement *ParseReturn();
 int NumberOfIntendations();
-bool SyntaxChecker(FuncDef **program);
+void SyntaxChecker(FuncDef **program);
 Expression *NewExpression(ExpressionEnum type);
 Statement *NewStatement(StatementEnum type);
 FuncDef *NewFunction();
