@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "structure.h"
 #include "syntax.h"
@@ -20,6 +21,7 @@
 static bool previousWasOperand = false;
 static bool foundError = false;
 static int parenDepth = 0;
+static int currentIndendationLevel = 0; //global počet odsazení
 
 //PROCEDURE TABLE
 #pragma region
@@ -55,6 +57,7 @@ static const char p_Table[P_TABLE_SIZE][P_TABLE_SIZE] = {
 static Token token;
 static Token nextToken;
 bool tokenPeaked = false;
+bool imported = false;
 
 void Next()
 {
@@ -66,6 +69,10 @@ void Next()
     else
     {
         token = TokenGiver();
+        if (imported && token.type == KW_IMPORT)
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+        }
     }
 }
 
@@ -75,6 +82,10 @@ void Peek()
     {
         tokenPeaked = true;
         nextToken = TokenGiver();
+        if (imported && token.type == KW_IMPORT)
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+        }
     }
 }
 
@@ -90,84 +101,75 @@ void Expect(TokType type)
 }
 
 /// @brief Rozhodne, jestli další token je požadovaný token typu data (INT, DOUBLE, STRING, UNIT).
-void ExpectDataType()
+DataType ExpectDataType()
 {
     switch(token.type)
     {
         case KW_INT:
         {
             Expect(KW_INT);
-             return;
+            return DT_INT;
         }
         case KW_DOUBLE:
         {
             Expect(KW_DOUBLE);
-            return;
+            return DT_DOUBLE;
         }
         case KW_STRING:
         {
             Expect(KW_STRING);
-            return;
+            return DT_STRING;
         }
         case KW_UNIT:
         {
             Expect(KW_UNIT);
-            return; 
+            return DT_UNIT; 
         }
         default: 
         {
             ErrorHandlingSyntax(ERR_SYNTAX, token);
-            return;
+            return DT_NONE;
         }
     }
 }
 
 /// @brief 
-/// @param indendationLevel current level of backspaces for blocks
-void ParseIf(bool checkIndendation, int indendationLevel) 
+Statement *ParseIf() 
 {
     //if (sum) then 
     //  BLOCK 
     //else
     //  BLOCK
     //CheckIndendation(check_Indendation, indendationLevel);
+    Statement *s = NewStatement(ST_IF);
+    int indendation = currentIndendationLevel;
     Expect(KW_IF);
-    ParseExpression(); //sum
+    s->data.ST_if.condition = ParseExpression(); //sum
     Expect(KW_THEN);
-    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
-    CheckIndendation(checkIndendation, indendationLevel);
-    Expect(KW_ELSE);
-    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
-}
+    ExpectEndOfLine();
+    s->data.ST_if.then = ParseBlock(indendation); //BLOCK
 
-/// @brief Parses a function(without the function ID name)
-/// @param checkIndendation If Indendation should be checked
-/// @param indendationLevel Current Indendation Level
-void ParseFunction(bool checkIndendation, int indendationLevel)
-{
-    //Foo(sum)
-    //  BLOCK
-    //  RETURN
-    CheckIndendation(checkIndendation, indendationLevel);
-    Expect(T_LPAREN);
-    Peek();
-    if (nextToken.type == T_ID)
+    if (currentIndendationLevel != indendation) //If a Else musí být na stejném odsazení
     {
-         ParseCall(); //sum
+        ErrorHandlingSyntax(ERR_SYNTAX, token);
     }
-    ParseLine(checkIndendation, indendationLevel + 1); //BLOCK
-    Expect(KW_RETURN);
+
+    Expect(KW_ELSE);
+    ExpectEndOfLine();
+    s->data.ST_if.els = ParseBlock(indendation); //BLOCK
+    return s;
 }
 
+/// @brief Zpracuje funkci/call (nechává ID)
 Expression *ParseCall()
 {
-    //ID(x,y,name,c * 2)
+    //Foo(sum,sum,sum)
     Expression *e = NewExpression(E_CALL);
-    e->data.call.name = CopyName();
-    Next();
+    e->data.call.name = ExpectName();
     Expect(T_LPAREN);
+
     e->data.call.argc = 0;
-    while(nextToken.type != T_RPAREN) //empty == ID()
+    while(token.type != T_RPAREN) //empty == ID()
     {
         e->data.call.argc++; //up argument count
         e->data.call.args = realloc(e->data.call.args, e->data.call.argc * sizeof(Expression)); //argc za
@@ -179,65 +181,90 @@ Expression *ParseCall()
         }
         else break; //Tot vše
     }
-    Expect(T_LPAREN);
+    Expect(T_RPAREN);
+    ExpectEndOfLine();
+    Expect(KW_RETURN);
+    return e;
 }
 
 /// @brief Parses a while cycle(without the function ID name)
 /// @param checkIndendation If Indendation should be checked
 /// @param indendationLevel Current Indendation Level
-void ParseWhile(bool check_Indendation, int indendationLevel)
+Statement *ParseWhile()
 {
+    Statement *s = NewStatement(ST_WHILE);
     //While (sum) do
     //  BLOCK
-    //CheckIndendation(check_Indendation, indendationLevel);
     Expect(KW_WHILE);
-    ParseExpression(); //sum
+    int indendation = currentIndendationLevel;
+    s->data.ST_while.condition = ParseExpression(); //sum
     Expect(KW_DO);
-    Expect(T_EOL);
-    ParseLine(check_Indendation, indendationLevel + 1); //BLOCK
+    ExpectEndOfLine();
+    s->data.ST_while.body = ParseBlock(indendation); //BODY
+    return s;
 }
 
 /// @brief Parses a variable
 /// @param checkIndendation If Indendation should be checked
 /// @param indendationLevel Current Indendation Level
-void ParseVariable(bool check_Indendation, int indendationLevel)
+Statement *ParseVariable()
 {
     //var ID =
+    Statement *s = NewStatement(ST_VARDEF);
+    s->line = token.line;
     if (token.type == KW_VAR)
     {
         Expect(KW_VAR);
+        s->data.ST_vardef.isVar = true; //can be modified
     }
     else if (token.type == KW_VAL)
     {
         Expect(KW_VAL);
+         s->data.ST_vardef.isVar = false; //cannot be modified
     }
     else 
     {
         ErrorHandlingSyntax(ERR_SYNTAX, token);
     }
 
-    Expect(T_ID);
+    s->data.ST_vardef.name = ExpectName();
+
     if (token.type == T_COLON) //přiřazení var x: INT = *neco*
     {
-        Expect(T_COLON);
+        Expect(T_COLON); //sežere :
+        s->data.ST_vardef.type = ExpectDataType();
         ExpectDataType();
-        Expect(T_ASSIGN);
-        ParseExpressionOrCall(check_Indendation, indendationLevel);
+        Expect(T_ASSIGN);        
+        Expression *e = ParseExpressionOrCall();
+        s->data.ST_vardef.init = e;
+        return s;
     }
     else if (token.type == T_ASSIGN) //Assing x = *neco*
     {
         Expect(T_ASSIGN);
-        ParseExpressionOrCall(check_Indendation, indendationLevel);
+        Expression *e = ParseExpressionOrCall();
+        s->data.ST_vardef.init = e;
+        return s;
     }
-    else ErrorHandlingSyntax(ERR_SYNTAX, token);
-
+    ErrorHandlingSyntax(ERR_SYNTAX, token);
+    return NULL;
 }
 
+/// @brief Parses an assign
+Statement *ParseAssign()
+{
+    //ID = výraz-nebo-volání
+    Statement *s = NewStatement(ST_ASSIGN);
+    s->data.ST_assign.name = ExpectName(); //jmeno
+    Expect(T_ASSIGN);
+    s->data.ST_assign.value = ParseExpressionOrCall(); //výraz-nebo-volání
+    return s;
+}
 
 /// @brief Decides if the next token points to function or expression
 /// @param check_Indendation 
 /// @param indendationLevel 
-void ParseExpressionOrCall(bool check_Indendation, int indendationLevel)
+Expression *ParseExpressionOrCall()
 {
     //= *neco*
     if (token.type == T_ID)
@@ -245,11 +272,91 @@ void ParseExpressionOrCall(bool check_Indendation, int indendationLevel)
         Peek();
         if (nextToken.type == T_LPAREN)
         {
-            ParseFunction(check_Indendation, indendationLevel);
-            return;
+            return ParseCall();
         }
     }
-    ParseExpression();
+    return ParseExpression();
+}
+
+/// @brief Definuje funkci
+/// @return 
+FuncDef *ParseDefFunction()
+{
+    //def id(parametry) [: návratový-typ] = výraz-nebo-volání
+    //def id(parametry) [: návratový-typ] =
+    //   odsazený-blok
+    int indendation = currentIndendationLevel;
+    FuncDef *fd = NewFunction();
+    Expect(KW_DEF);
+    fd->name = CopyName();
+    Expect(T_ID);
+    Expect(T_LPAREN);
+    while (token.type != T_RPAREN) //parametry
+    {
+        fd->params = realloc(fd->params, sizeof(fd->params) * (fd->paramCount + 1)); //Zvetsit param
+        MallocChecker(fd->params);
+        //ID:TYP
+        fd->params[fd->paramCount].name = ExpectName(); //jmeno parametru        
+        Expect(T_COLON);
+        fd->params[fd->paramCount].type= ExpectDataType(); //typ parametru   
+        fd->paramCount++;     
+        if (token.type == T_COMMA)
+        {
+            Expect(T_COMMA);
+        }        
+        else break;  //Tot vse
+    }  
+    Expect(T_RPAREN); //sežere )
+
+    if (token.type == T_COLON) //: návratový-typ
+    {
+        Expect(T_COLON);
+        fd->returnType = ExpectDataType();
+    }
+    else
+    {
+        fd->returnType = DT_NONE;
+    }
+    Expect(T_ASSIGN);
+
+    switch (token.type)
+    {
+        case T_ID: //= výraz-nebo-volání
+        {
+            Statement *s = NewStatement(ST_EXPR);
+            s->data.expression = ParseExpressionOrCall();
+            fd->body = NewBlock();
+            BlockAppend(fd->body, s);
+            ExpectEndOfLine();
+            break;
+        }
+        case T_EOL: //odsazený-blok
+        {
+            ExpectEndOfLine();
+            fd->body = ParseBlock(indendation);
+            break;
+        }
+        default: //something is missing
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+            break;
+        }
+    }
+    return fd;
+
+}
+
+/// @brief Okopíruje název z tokenu a sežere ID 
+/// @return Kopie názvu
+char *ExpectName()
+{
+    if (token.type != T_ID)
+    {
+        ErrorHandlingSyntax(ERR_SYNTAX, token);
+    }
+    char *name = CopyName();
+    Next();
+    return name;
 }
 
 /// @brief Parses expression
@@ -287,7 +394,7 @@ Expression *ParseExpression()
                 MallocChecker(top);
                 StackItem item;
                 item.token = token; //Kopie Tokenu
-                StackTop(stack, &top);
+                StackTop(stack, top);
 
                 if (item.token.type == T_MINUS && !previousWasOperand)
                 {
@@ -355,31 +462,26 @@ Expression *ParseExpression()
                 MallocChecker(temp);
                 if (StackIsEmpty(stack)) ErrorHandlingSyntax(ERR_SYNTAX, token);
                 StackPopReturn(stack, temp);
-                if (temp->token.type != P_NONTERM) ErrorHandlingSyntax(ERR_SYNTAX, token); //Didnt end on $ E
+                if (temp->token.type != P_NONTERM) ErrorHandlingSyntax(ERR_SYNTAX, token); //Didnt end on $ E                
+                Expression *result = temp->e; //Hotový strom výrazu
                 StackPopReturn(stack, temp);
                 if (temp->token.type != T_ENDSYMBOL) ErrorHandlingSyntax(ERR_SYNTAX, token); //Didnt end on $
                 free(temp);
                 StackFree(stack);
-                free(middleToken);
-                free(endToken);
-                return; //found the end
+                return result; //found the end
             }
             case X: //syntax error
             {
                 ErrorHandlingSyntax(ERR_SYNTAX, token);
                 StackFree(stack);
-                free(middleToken);
-                free(endToken);
-                return;
+                return NULL;
             }
             default:
             {
                 printf("Procedure table error: Not alocated space in the 2D table");
                 ErrorHandlingSyntax(ERR_INTERNAL, token);
                 StackFree(stack);
-                free(middleToken);
-                free(endToken);
-                return;
+                return NULL;
             }
         }
     }
@@ -398,38 +500,36 @@ void UpdateState(TokType token)
 
 Expression *ExpressionTransform(StackItem *item)
 {
-    {
     Expression *e;
     switch (item->token.type)
     {
         case T_ID: 
         {
-            e = NewExpr(E_VAR); 
-            e->data.name = strdup(item->token.val.s); //IDname 
+            e = NewExpression(E_VAR); 
+            e->data.name = strDuplicate(item->token.val.s); //IDname 
             break;
         }
         case T_INT_LIT:
         {
-            e = NewExpr(E_INT);
+            e = NewExpression(E_INT);
             e->data.intValue = item->token.val.i;
             break;
         }
         case T_DOUBLE_LIT:    
         {
-            e = NewExpr(E_DOUBLE);
+            e = NewExpression(E_DOUBLE);
             e->data.doubleValue = item->token.val.d;
             break;
         }
         case T_STRING_LIT:   
         {
-             e = NewExpr(E_STR);
-             e->data.stringValue = strdup(item->token.val.s); 
+             e = NewExpression(E_STR);
+             e->data.stringValue = strDuplicate(item->token.val.s); 
              break;
         }
         default: return NULL;
     }
     return e;
-}
 }
 
 bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
@@ -448,17 +548,14 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
     // E → ( E )
     if (lenght == 3 && items[2].token.type == T_LPAREN && items[1].token.type == P_NONTERM && items[0].token.type == T_RPAREN)
         {
-            out->token.type = P_NONTERM;
+            out->e = items[1].e;
             return true; 
         }
 
     // E → E op E
     if (lenght == 3 && items[2].token.type == P_NONTERM && IsBinaryOperator(items[1].token.type) && items[0].token.type == P_NONTERM)
         { 
-            out->e->type = E_BIN;
-            out->token.type = P_NONTERM;
-            out->e->data.binary.left = items[2].e;
-            out->e->data.binary.right = items[0].e;
+            out->e = MakeBin(items[1].token.type, items[2].e, items[0].e);
             return true; 
         }
 
@@ -469,10 +566,9 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out)
             {
                 return false;
             }
-            out->e->type = E_UNARY;
+            out->e = NewExpression(E_UNARY);
             out->e->operation = T_MINUS;
-            out->e->data.unitary = items[0].token.type; 
-            out->token.type = P_NONTERM;
+            out->e->data.unitary = items[0].e;
             return true; 
         }
     return false; //Rule not found
@@ -502,16 +598,31 @@ bool IsTerm(TokType token)
     }
 }
 
+Block *NewBlock()
+{
+    Block *b = calloc(1, sizeof(Block));
+    MallocChecker(b);
+    return b;
+}
+
 /// @brief Returns the procedure table "word" based on stack and token
 /// @param stack //Pointer to stack
 /// @param token_Input //Token
 /// @return 
-char PTableFinder(Stack *stack, TokType token_Input)
+char PTableFinder(Stack *stack, TokType tokenInput)
 {
-    Token *stackToken = malloc(sizeof(Token));
-    MallocChecker(stackToken);
-    StackTop(stack, &stackToken);
-    return p_Table[PTableIndexFinder_3000(stackToken->type, false)][PTableIndexFinder_3000(token_Input, true)];
+    StackItem *top = NULL;
+    StackTop(stack, top);
+    TokType stackType = top->token.type;
+    if (stackType == P_NONTERM) //skip E
+    {
+        StackItem saved;
+        StackPopReturn(stack, &saved); //vyndat E
+        StackTop(stack, top);
+        stackType = top->token.type;
+        StackPush(stack, saved); //vrátit E zpět
+    }
+    return p_Table[PTableIndexFinder_3000(stackType, false)][PTableIndexFinder_3000(tokenInput, true)];
 }
 
 /// @brief Returns the index for the procedure table finder
@@ -555,89 +666,167 @@ int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput)
 }
 
 /// @brief Parses a line of code
-/// @param checkIndendation If indendation should be checked
-/// @param indendationLevel Current level of backspaces for blocks
-void ParseLine(bool check_Indendation, int indendationLevel)
+Statement *ParseLine()
 {
-    CheckIndendation(check_Indendation, indendationLevel);
-    while (token.type != T_EOL)
+    Statement *s = NULL;
+    switch (token.type) 
     {
-        switch (token.type) 
+        case KW_VAR: case KW_VAL: 
         {
-            case KW_VAR: case KW_VAL: 
+            s = ParseVariable();  
+            break;
+        }
+        case KW_IF:               
+        {
+            s = ParseIf();       
+            break;
+        }
+        case KW_WHILE:            
+        {
+            s = ParseWhile();    
+            break;
+        }
+        case KW_RETURN:           
+        {
+            s = ParseReturn(); 
+            break;
+        }
+        case T_ID:     
+        {
+            Peek();
+            if (nextToken.type == T_ASSIGN) //x = *neco*
             {
-                ParseVariable(check_Indendation, indendationLevel);  
-                break;
+                s = ParseAssign();
             }
-            case KW_IF:               
+            else //x + 1 / foo(a, b)
             {
-                ParseIf(check_Indendation, indendationLevel);       
-                break;
+                s = NewStatement(ST_EXPR);
+                s->data.expression = ParseExpressionOrCall();
             }
-            case KW_WHILE:            
-            {
-                ParseWhile(check_Indendation, indendationLevel);    
-                break;
-            }
-            case KW_RETURN:           
-            {
-                ParseReturn(check_Indendation, indendationLevel); 
-                break;
-            }
-            case T_ID:     
-            {
-                ParseExpressionOrCall(check_Indendation, indendationLevel);
-                break;
-            }
-            default:                 
-            {
-                ErrorHandlingSyntax(ERR_SYNTAX, token);
-                break; 
-            }
+            ExpectEndOfLine();
+            break;
+        }
+        case T_INT_LIT: case T_DOUBLE_LIT: case T_STRING_LIT: case T_LPAREN: case T_MINUS: //Samostatně stojící výraz
+        {
+            s = NewStatement(ST_EXPR);
+            s->data.expression = ParseExpression();
+            ExpectEndOfLine();
+            break;
+        }
+        default:                 
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+            break; 
         }
     }
-    Expect(T_EOL); //sežere EOL na konci bloku
+    ExpectEndOfLine(); //sežere EOL na konci bloku
+    return s;
 }
 
-void ParseReturn(bool check_Indendation, int indendationLevel)
+/// @brief Překládá strom a žere odsazení
+/// @param checkIndendation If indendation should be checked
+/// @param indendationLevel Current level of backspaces for blocks
+Block *ParseBlock(int parentIndendation) //0
 {
+    //if (sum)      0
+    //  sum         1
+    //  sum         1
+
+    // if (sum)     1
+            //sum   2
+            //sum   2
+    
+     if (token.type == T_EOF || currentIndendationLevel <= parentIndendation) //Blok nemůže být prázdný ani neodsazený
+    {
+        ErrorHandlingSyntax(ERR_SYNTAX, token);
+    }
+
+    Block *b = NewBlock();
+
+    int indendation = currentIndendationLevel;
+    indendation = NumberOfIntendations(); //1
+    while (token.type != T_EOF && currentIndendationLevel == indendation)
+    {
+        currentIndendationLevel = NumberOfIntendations();
+        BlockAppend(b, ParseLine());
+    }
+    return b;
+}
+
+Statement *ParseReturn()
+{
+    Statement *s = NewStatement(ST_RETURN);
     Expect(KW_RETURN);
     switch (token.type)
     {
         //Return
         case T_EOL:
-        case T_EOF:          
+            s->data.retur = NULL;
+            ExpectEndOfLine();
             break;
+        case T_EOF:       
+            s->data.retur = NULL;   
+            ExpectEndOfLine();
+            break;
+
         //Return *sum*
         default:
-            ParseExpressionOrCall(check_Indendation, indendationLevel);
-            break;
+            s->data.retur = ParseExpressionOrCall();
     }
+    return s;
 }
 
-/// @brief Checks indendation level
-/// @param check If indendation should be checked
-/// @param indendationLevel Current level of backspaces for blocks
-void CheckIndendation(bool check, int indendationLevel)
+/// @brief Vrátí počet odsazení (a sežere Indedndation)
+int NumberOfIntendations()
 {
-    if (check || indendationLevel > 0)
+    if (token.type == T_INDENDATION)
     {
-        for (int i = 0; i < indendationLevel; i++)
-        {
-            Expect(T_INDENDATION);
-        }
+        int temp = token.val.i;  //počet odsazení
+        Next();
+        return temp;
     }
-    return;
+    else return 0;
 }
 
-bool SyntaxChecker()
+/// @brief Kontroluje vstup pomocí tokenů a vrací
+/// @param program Vrací "strom" pro Sematiku a CodeGen
+/// @return Vrací jestli je vstup syntakticky správně
+bool SyntaxChecker(FuncDef **program)
 {
-    Next(); //Very first token
-    Expect(KW_IMPORT); //import ifj26.*
+    *program = NULL;
+    FuncDef *last = NULL;
+
+    Next(); //První token
+    currentIndendationLevel = NumberOfIntendations(); //Přeskočí prázdné řádky a komentáře před prologem
+    
+    while (token.type != KW_IMPORT) //Ignoruje cokoliv před Importem
+    {
+        Next();
+    }
+    Expect(KW_IMPORT);
+    imported = true;
+    ExpectEndOfLine();
 
     while (token.type != T_EOF)
     {
-        ParseLine(true, 0);
+        if (token.type != KW_DEF || currentIndendationLevel != 0) //Na nejvyšší úrovni jsou jen funkce bez odsazení
+        {
+            ErrorHandlingSyntax(ERR_SYNTAX, token);
+        }
+        bool nextIsMain = false;
+        if (token.type == KW_MAIN)
+        {
+            nextIsMain = true;
+            Next();
+        }
+        FuncDef *fd = ParseDefFunction();
+        if (nextIsMain)
+        {
+            fd->isMain = true;
+        }
+        if (last == NULL) *program = fd;
+        else last->next = fd;
+        last = fd;
     }
     return foundError;
 }
@@ -652,10 +841,18 @@ Expression *NewExpression(ExpressionEnum type)
 
 Statement *NewStatement(StatementEnum type)
 {
-    Statement *st = malloc(sizeof(Statement));
+    Statement *st = calloc(1, sizeof(Statement));
+    MallocChecker(st);
     st->line = token.line;
     st->type = type;
     return st;
+}
+
+FuncDef *NewFunction()
+{
+    FuncDef *fd = calloc(1, sizeof(FuncDef));
+    MallocChecker(fd);
+    return fd;
 }
 
 Expression *MakeBin(TokType operation, Expression *left, Expression *right)
@@ -667,7 +864,7 @@ Expression *MakeBin(TokType operation, Expression *left, Expression *right)
     return e;
 }
 
-static void BlockAppend(Block *b, Statement *s) 
+void BlockAppend(Block *b, Statement *s) 
 { 
     if (b->last) 
     {
@@ -699,7 +896,7 @@ DataType ParseType()
         case KW_UNIT: 
             type = DT_UNIT; 
             break;
-        default: SyntaxError();
+        default: ErrorHandlingSyntax(ERR_SYNTAX, token);
     }
     Next(); 
     return type;
@@ -709,8 +906,33 @@ DataType ParseType()
 /// @return 
 char *CopyName()
 {
-    return strdup(token.val);
+    return strDuplicate(token.val.s);
 }
 
 
+void ExpectEndOfLine()
+{
+    if (token.type == T_EOL)
+    {
+        Next();
+    }
+    else if (token.type != T_EOF) //konec souboru
+    {
+        ErrorHandlingSyntax(ERR_SYNTAX, token);
+    }
+    currentIndendationLevel = NumberOfIntendations(); //odsazení dalšího řádku
+}
+
+/// @brief Vlastní strdup (strdup není ve striktním C standardu)
+/// @param s Řetězec, který se zkopíruje
+/// @return Kopie řetězce na haldě (NULL pro NULL)
+char *strDuplicate(const char *s)
+{
+    if (s == NULL) return NULL;
+    size_t len = strlen(s) + 1; //+1 kvůli \0
+    char *copy = malloc(len);
+    MallocChecker(copy);
+    memcpy(copy, s, len);
+    return copy;
+}
 #endif

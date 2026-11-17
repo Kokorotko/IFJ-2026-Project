@@ -28,7 +28,12 @@ int main(int argc, char *argv[])
     return ERR_REDEFINED; //reading file error
   }
   TokenInicializator(file);
-  SyntaxChecker();
+  FuncDef *program;
+  int errorCode = SyntaxChecker(&program);
+  if (errorCode != 0)
+  {
+     ThrowError(errorCode);
+  }
   //Sematix check
   //Semathics();
   //GenerateCode();

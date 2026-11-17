@@ -82,7 +82,7 @@ bool StackTop(Stack *s, StackItem *item)
     {
         return false;
     }
-    item = &s->top->data;
+    *item = s->top->data;
     return true;
 }
 

@@ -19,29 +19,44 @@
 
 #include "lex.h"
 #include "structure.h"
+#include "codeStruct.h"
 #include "linkedList.h"
 #include "stack.h"
+
 
 void Next();
 void Peek();
 void Expect(TokType type);
-void ExpectDataType();
-void ParseIf(bool checkIndendation, int indendationLevel);
-void ParseFunction(bool checkIndendation, int indendationLevel);
-void ParseWhile(bool checkIndendation, int indendationLevel);
-void ParseVariable(bool checkIndendation, int indendationLevel);
-void ParseExpressionOrCall(bool checkIndendation, int indendationLevel);
-void ParseExpression();
+char *ExpectName();
+void ExpectEndOfLine();
+DataType ExpectDataType();
+Statement *ParseIf();
+Expression *ParseCall();
+Statement *ParseWhile();
+Statement *ParseVariable();
+Statement *ParseAssign();
+Expression *ParseExpressionOrCall();
+FuncDef *ParseDefFunction();
+Expression *ParseExpression();
 void UpdateState(TokType token);
+Expression *ExpressionTransform(StackItem *item);
 bool ReduceByRule(StackItem *items, int lenght, StackItem *out);
-char PTableFinder(Stack *stack, TokType token_Input);
-int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput);
-void ParseLine(bool checkIndendation, int indendationLevel);
-void CheckIndendation(bool check, int indendationLevel);
-bool SyntaxChecker();
-void ParseReturn(bool checkIndendation, int indendationLevel);
 bool IsBinaryOperator(TokType token);
 bool IsTerm(TokType token);
-void ParseCall();
+char PTableFinder(Stack *stack, TokType tokenInput);
+int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput);
+Statement *ParseLine();
+Block *ParseBlock(int parentIndendation);
+Statement *ParseReturn();
+int NumberOfIntendations();
+bool SyntaxChecker(FuncDef **program);
+Expression *NewExpression(ExpressionEnum type);
+Statement *NewStatement(StatementEnum type);
+FuncDef *NewFunction();
+Block *NewBlock();
+Expression *MakeBin(TokType operation, Expression *left, Expression *right);
+void BlockAppend(Block *b, Statement *s);
+char *CopyName();
+char *strDuplicate(const char *s);
 
 #endif

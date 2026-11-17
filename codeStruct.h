@@ -53,14 +53,6 @@ typedef enum
     ST_EXPR     // expression/call
 } StatementEnum; //TokType pro strukturu2
 
-/// @brief Struktura pro funkci která se zavolá (i s arguments)
-struct 
-{ 
-    char *name; 
-    struct Expression **args; //arguments
-    int argc; //argument count
-} call;
-
 /// @brief Struktura pro definici expression
 typedef struct Expression 
 {
@@ -113,7 +105,7 @@ struct Statement
         { 
             char *name; 
             bool isVar; 
-            DataType type; 
+            DataType type; //INT, DOUBLE, STRING
             Expression *init; 
         } ST_vardef;
 
@@ -136,7 +128,7 @@ struct Statement
             Block *body; 
         } ST_while;
 
-        Expression *ret; // NULL = bare return
+        Expression *retur; // NULL = bare return
         Expression *expression;
     } data;
 };
@@ -152,12 +144,12 @@ typedef struct
 typedef struct FuncDef 
 {
     char *name; 
-    Param *params; 
+    Param *params; //Params se chovají jak VAL!
     int paramCount;
-    DataType returnType;
-    bool isMain; //Main can be only one
-    Block *body;   
-    struct FuncDef *next; //next function
+    DataType returnType; 
+    bool isMain; //Main může být pouze jeden
+    Block *body;     
+    struct FuncDef *next; //další funkce
 } FuncDef;
 
 #endif
