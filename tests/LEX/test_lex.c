@@ -26,6 +26,10 @@ int main(void)
         {
             printf(", hodnota: %.17g", token.val.d);
         }
+        else if (token.type == T_INDENDATION)
+        {
+            printf(", indent: %lld", token.val.i);
+        }
 
         putchar('\n');
 
