@@ -81,9 +81,15 @@ typedef enum
   NUM_FRACTION_UNDERCORE // podtržítko pro desetiny
 
 } NumberState; // čísloce
+static bool lineStart = true;
+static int nextChar = EOF;
+static int indent = 0;
+static int *indentStack = NULL; // ukazatel na pole indent
+static int parenDepth = 0;      // pro to jestli se vraco
 //============================================================================
-//                                   FUNCTIONS
-//============================================================================
+//                                    FUNCTIONS
+//============================================================================¨
+
 bool IsLetter(int c) // is this lil guy a letter, god i hope so
 {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); // is char?
@@ -99,7 +105,7 @@ bool IsIdentifierPart(int c) // i guess he could, so now he can be anything, yaa
   return IsIdentifierStart(c) || (c >= '0' && c <= '9'); // is valid identifier char?
 }
 
-TokType KeywordOrIdentifier(const char *text) // vrací řídící strukturu
+TokType KeywordOrIdentifier(const char *text) // rozhoduje jestli je string keyword nebo identifikator
 {
   int count = sizeof Keyword / sizeof Keyword[0];
   for (int i = 0; i < count; i++)
@@ -115,23 +121,209 @@ bool IsDigit(int c)
 {
   return c >= '0' && c <= '9';
 }
+
+void SkipLineComment(FILE *mainFile) // skip komentáře
+{
+  int c;
+
+  do
+  {
+    c = fgetc(mainFile);
+  } while (c != '\n' && c != EOF);
+
+  if (c == EOF)
+  {
+    if (ferror(mainFile))
+    {
+      ThrowError(ERR_INTERNAL);
+    }
+    return;
+  }
+
+  // Nový řádek zpracuje běžná část lexeru.
+  if (ungetc(c, mainFile) == EOF)
+  {
+    ThrowError(ERR_INTERNAL);
+  }
+}
+static int SkipBlockComment(FILE *mainFile)
+{
+  int depth = 1;
+  int newLines = 0;
+  int previous = 0;
+
+  while (depth > 0)
+  {
+    int c = fgetc(mainFile);
+    if (c == EOF)
+    {
+      if (ferror(mainFile))
+      {
+        ThrowError(ERR_INTERNAL);
+        exit(ERR_INTERNAL);
+      }
+
+      // EOF před uzavřením všech komentářů.
+      ThrowError(ERR_LEX);
+      exit(ERR_LEX);
+    }
+
+    if (c == '\n')
+    {
+      newLines++;
+    }
+    if (previous == '/' && c == '*')
+    {
+      depth++;
+      previous = 0;
+    }
+    else if (previous == '*' && c == '/')
+    {
+      depth--;
+      previous = 0;
+    }
+    else
+    {
+      previous = c;
+    }
+  }
+  return newLines;
+}
+
+// static bool TryLineComment(FILE *mainFile) // oveřeni jeslti se jedna o komentář nebo  odělení
+// {
+//   int next = fgetc(mainFile);
+
+//   if (next == '/')
+//   {
+//     SkipLineComment(mainFile);
+//     return true;
+//   }
+
+//   if (next == EOF)
+//   {
+//     if (ferror(mainFile))
+//     {
+//       ThrowError(ERR_INTERNAL);
+//       exit(ERR_INTERNAL);
+//     }
+//   }
+//   else if (ungetc(next, mainFile) == EOF)
+//   {
+//     ThrowError(ERR_INTERNAL);
+//     exit(ERR_INTERNAL);
+//   }
+
+//   return false; // První lomítko je stále běžný operátor.
+// }
+static bool TryComment(FILE *file, int *newlines) // funkce pro rozlišování více řádkových komentu
+{
+  *newlines = 0;
+
+  // První '/' už máme načtené.
+  int next = fgetc(file);
+
+  if (next == '/')
+  {
+    SkipLineComment(file);
+    return true;
+  }
+
+  if (next == '*')
+  {
+    *newlines = SkipBlockComment(file);
+
+    if (*newlines > 0)
+    {
+      // Za víceřádkovým komentářem smějí být
+      // do konce řádku pouze bílé znaky.
+      int c;
+
+      do
+      {
+        c = fgetc(file);
+      } while (c == ' ' || c == '\t' ||
+               c == '\r' || c == '\v' || c == '\f');
+
+      if (c == EOF)
+      {
+        if (ferror(file))
+        {
+          ThrowError(ERR_INTERNAL);
+          exit(ERR_INTERNAL);
+        }
+      }
+      else if (c == '\n')
+      {
+        // LF zpracuje hlavní část lexeru.
+        if (ungetc(c, file) == EOF)
+        {
+          ThrowError(ERR_INTERNAL);
+          exit(ERR_INTERNAL);
+        }
+      }
+      else
+      {
+        ThrowError(ERR_LEX);
+        exit(ERR_LEX);
+      }
+    }
+
+    return true;
+  }
+
+  // Není to komentář: druhý znak vrátíme.
+  if (next == EOF)
+  {
+    if (ferror(file))
+    {
+      ThrowError(ERR_INTERNAL);
+      exit(ERR_INTERNAL);
+    }
+  }
+  else if (ungetc(next, file) == EOF)
+  {
+    ThrowError(ERR_INTERNAL);
+    exit(ERR_INTERNAL);
+  }
+
+  return false;
+}
 //============================================================================
 //============================================================================
 FILE *mainFile;     // pointer to file
 int lineNumber = 1; // line in code start at 1
-
+#pragma region Token Init
 void TokenInicializator(FILE *file)
 {
-  mainFile = file; // nastavv mainFile na File z argumentu
-  lineNumber = 1;  // nastavení řádku na 1
-}
+  free(indentStack);
 
+  indentStack = malloc(sizeof *indentStack);
+  if (indentStack == NULL)
+  {
+    ThrowError(ERR_INTERNAL);
+    exit(ERR_INTERNAL);
+  }
+
+  indentStack[0] = 0; // základní úroveň: žádné mezery
+
+  lineStart = true;
+  indent = 0;
+  mainFile = file;
+  lineNumber = 1;
+  nextChar = EOF;
+  parenDepth = 0;
+}
+#pragma endregion
+#pragma region TokenGiver()
 Token TokenGiver()
 {
   int c = 0;                           // proměnná pro znak
   int length = 0;                      // délka 0
   char *buffer = malloc(sizeof(char)); // alokace paměti na 1 znak
-  if (buffer == NULL)                  // ověřeníé nastavení alokace paměti
+  int numOfSpaces = 0;                 // počet mezer na začátku řádku¨
+
+  if (buffer == NULL) // ověřeníé nastavení alokace paměti
   {
     free(buffer);             // uvolni alokaci
     ThrowError(ERR_INTERNAL); // vrať error internal
@@ -144,18 +336,207 @@ Token TokenGiver()
   }
   // int state = 0;
   // static int _counter = 0;
+
   else
   {
-    do
+#pragma region indent
+    if (nextChar != EOF)
+    {
+      c = nextChar;
+      nextChar = EOF;
+    }
+    else
     {
       c = fgetc(mainFile);
-    } while (c == ' '); // přeskočení mezer a whitespace
+    }
+
+    if (lineStart)
+    {
+      numOfSpaces = 0;
+
+      while (true)
+      {
+        numOfSpaces = 0;
+        bool hasTab = false;
+
+        // Počítáme pouze odsazení před prvním znakem řádku.
+        while (c == ' ' || c == '\t')
+        {
+          if (c == ' ')
+          {
+            numOfSpaces++;
+          }
+          else
+          {
+            hasTab = true;
+          }
+
+          c = fgetc(mainFile);
+        }
+
+        // Za sebou může být i několik komentářů.
+        while (c == '/')
+        {
+          int commentNewlines = 0;
+
+          if (!TryComment(mainFile, &commentNewlines))
+          {
+            break; // Je to dělení, nikoli komentář.
+          }
+
+          lineNumber += commentNewlines;
+          c = fgetc(mainFile);
+
+          // Mezery za komentářem už nejsou úvodní odsazení.
+          while (c == ' ' || c == '\t' || c == '\r' ||
+                 c == '\v' || c == '\f')
+          {
+            c = fgetc(mainFile);
+          }
+        }
+
+        if (c == '\n')
+        {
+          // Prázdný nebo čistě komentářový řádek.
+          lineNumber++;
+          c = fgetc(mainFile);
+          continue;
+        }
+
+        if (c == EOF)
+        {
+          break; // Zpracuje ho stávající větev pro EOF.
+        }
+
+        if (hasTab)
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+          exit(ERR_LEX);
+        }
+
+        // Máme skutečný token: následuje zpracování odsazení.
+        break;
+      }
+
+      // Prázdný řádek ani EOF nesmí změnit odsazení.
+      if (c != '\n' && c != EOF) // TODO: syoyjd
+      {
+        if (numOfSpaces > indentStack[indent])
+        {
+          // Začíná nová, hlubší úroveň.
+          int *temp = realloc(
+              indentStack,
+              (indent + 2) * sizeof *indentStack);
+
+          if (temp == NULL)
+          {
+            free(buffer);
+            ThrowError(ERR_INTERNAL);
+            exit(ERR_INTERNAL);
+          }
+
+          indentStack = temp;
+          indent++;
+          indentStack[indent] = numOfSpaces;
+        }
+        else if (numOfSpaces < indentStack[indent])
+        {
+          // Můžeme se vracet přes několik úrovní najednou.
+          while (indent > 0 && numOfSpaces < indentStack[indent])
+          {
+            indent--;
+          }
+
+          // Odsazení musí odpovídat některé dřívější úrovni.
+          if (numOfSpaces != indentStack[indent])
+          {
+            free(buffer);
+            ThrowError(ERR_LEX);
+            exit(ERR_LEX);
+          }
+        }
+        lineStart = false;
+        // Znak uchováme pro další volání TokenGiver().
+        if (indent > 0)
+        {
+          /* code */
+
+          nextChar = c;
+
+          returnToken.type = T_INDENDATION;
+          returnToken.line = lineNumber;
+          returnToken.val.i = indent;
+
+          free(buffer);
+          return returnToken;
+        }
+      }
+    }
+    else
+    {
+      // Mezery a komentáře mezi běžnými tokeny.
+      while (true)
+      {
+        while (c == ' ' || c == '\t' || c == '\r' ||
+               c == '\v' || c == '\f')
+        {
+          c = fgetc(mainFile);
+        }
+
+        int commentNewlines = 0;
+
+        if (c != '/' || !TryComment(mainFile, &commentNewlines))
+        {
+          break;
+        }
+
+        lineNumber += commentNewlines;
+        c = fgetc(mainFile);
+
+        if (commentNewlines > 0)
+        {
+          // TryComment už ověřil, že zde smí být jen LF nebo EOF.
+          int endLine = lineNumber;
+
+          if (c == '\n')
+          {
+            lineNumber++;
+          }
+
+          if (parenDepth == 0)
+          {
+            lineStart = true;
+
+            returnToken.type = T_EOL;
+            returnToken.line = endLine;
+            returnToken.val.s = NULL;
+
+            free(buffer);
+            return returnToken;
+          }
+
+          // Uvnitř závorek komentář neukončuje logický řádek.
+          if (c == '\n')
+          {
+            c = fgetc(mainFile);
+          }
+        }
+      }
+    }
+
+#pragma endregion
+
+    // Tady pokračuje tvoje stávající kontrola '\n', EOF,
+    // identifikátorů, čísel atd.
+
     if (c == '\n') // konec řádku
     {
       returnToken.type = T_EOL;      // vrať konec řádku
       returnToken.line = lineNumber; // vrať číslo
       returnToken.val.s = NULL;      // vrať NULL pro value tokenu
 
+      lineStart = true;
       lineNumber++;       // přičti řádek
       free(buffer);       // uvolni alokaci
       return returnToken; //  token return
@@ -175,6 +556,7 @@ Token TokenGiver()
       returnToken.val.s = NULL;
       return returnToken;
     }
+#pragma region Identifier //--------------------------------------------------------------------------------------------
     if (IsIdentifierStart(c)) // pokud znak může být začátkem identifikátoru
     {
       do
@@ -226,6 +608,43 @@ Token TokenGiver()
       return returnToken;
     } // konec if (IsIdentifierStart(c))
   }
+#pragma endregion
+#pragma region Paren ()
+  if (c == '(' || c == ')' || c == '[' || c == ']')
+  {
+    switch (c)
+    {
+    case '(':
+      parenDepth++;
+      returnToken.type = T_LPAREN;
+      break;
+    case ')':
+      if (parenDepth > 0)
+      {
+        parenDepth--;
+      }
+      returnToken.type = T_RPAREN;
+      break;
+
+    case '[':
+      ThrowError(ERR_LEX);
+      free(buffer);
+      break;
+
+    case ']':
+      ThrowError(ERR_LEX);
+      free(buffer);
+      break;
+    }
+
+    returnToken.line = lineNumber;
+    returnToken.val.s = NULL;
+
+    free(buffer);
+    return returnToken;
+  }
+
+#pragma endregion
 #pragma region Num
   if (IsDigit(c) || c == '.')
   {
@@ -291,13 +710,14 @@ Token TokenGiver()
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
-
+#pragma region NumState Switch
       switch (numState)
       {
+#pragma region Int
       case NUM_INTEGER:
         if (IsDigit(c))
         {
-          // Zůstáváme v NUM_INTEGER.
+          numState = NUM_INTEGER;
         }
         else if (c == '.')
         {
@@ -316,7 +736,8 @@ Token TokenGiver()
           done = true;
         }
         break;
-
+#pragma endregion
+#pragma region Num Dot
       case NUM_DOT:
         if (IsDigit(c))
         {
@@ -328,11 +749,12 @@ Token TokenGiver()
           ThrowError(ERR_LEX);
         }
         break;
-
+#pragma endregion
+#pragma region NUM FRACTION
       case NUM_FRACTION:
         if (IsDigit(c))
         {
-          // Zůstáváme v NUM_FRACTION.
+          numState = NUM_FRACTION;
         }
         else if (c == 'e' || c == 'E')
         {
@@ -351,7 +773,8 @@ Token TokenGiver()
           done = true;
         }
         break;
-
+#pragma endregion
+#pragma region Exponent
       case NUM_EXP_START:
         if (c == '+' || c == '-')
         {
@@ -367,7 +790,8 @@ Token TokenGiver()
           ThrowError(ERR_LEX);
         }
         break;
-
+#pragma endregion
+#pragma region EXP SIGN
       case NUM_EXP_SIGN:
         if (IsDigit(c))
         {
@@ -379,6 +803,8 @@ Token TokenGiver()
           ThrowError(ERR_LEX);
         }
         break;
+#pragma endregion
+#pragma region EXP DIGITS
       case NUM_EXP_DIGITS:
         if (IsDigit(c))
         {
@@ -428,8 +854,10 @@ Token TokenGiver()
         done = true;
         break;
       }
-    } while (!done);
+#pragma endregion
 
+    } while (!done);
+#pragma endregion
     // Znak, který už nepatří do čísla, vrátíme.
     if (c != EOF && ungetc(c, mainFile) == EOF)
     {
@@ -542,6 +970,7 @@ Token TokenGiver()
         ThrowError(ERR_LEX);
         break;
 #pragma endregion
+#pragma region Rest of it
       case STATE_PLUS:
         returnToken.type = T_PLUS;
         goto operator_done;
@@ -634,7 +1063,9 @@ Token TokenGiver()
   returnToken.line = lineNumber;
   returnToken.val.s = NULL;
   return returnToken;
-  /*i nomine patris et filii et spiritus sancti */
+/*i nomine patris et filii et spiritus sancti */
+#pragma endregion
+#pragma endregion TokenGiver()
 }
 
 // Testovacio soubor lex, spustit napsat výraz, zkontrolovat s TokType v structure.h

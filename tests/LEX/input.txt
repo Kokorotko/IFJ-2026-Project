@@ -1,4 +1,10 @@
-while i > 1 do
-    //text
-    result = result * i
+
+lovo //3
+/*
+koment
+*/
+function(
+    
+)
     i = i - 1
+result = result
