@@ -64,7 +64,8 @@ typedef enum // tohle je pro menší větší rovná se a kombinace
   STATE_NOT,
   STATE_NEQ,
   STATE_COMMA,
-  STATE_COLON
+  STATE_COLON,
+  STATE_SEMI
 } ScannerState; // specialní znaky
 
 typedef enum
@@ -86,6 +87,7 @@ static int nextChar = EOF;
 static int indent = 0;
 static int *indentStack = NULL; // ukazatel na pole indent
 static int parenDepth = 0;      // pro to jestli se vraco
+static int lineNumber = 1;
 //============================================================================
 //                                    FUNCTIONS
 //============================================================================¨
@@ -289,10 +291,85 @@ static bool TryComment(FILE *file, int *newlines) // funkce pro rozlišování v
 
   return false;
 }
+// Vrátí první znak, který není bílý znak ani součást komentáře.
+static int ImportNextChar(FILE *mainFile)
+{
+  int c = fgetc(mainFile);
+
+  while (true)
+  {
+    while (c == ' ' || c == '\t' || c == '\r' ||
+           c == '\v' || c == '\f' || c == '\n')
+    {
+      if (c == '\n')
+      {
+        lineNumber++;
+      }
+
+      c = fgetc(mainFile);
+    }
+
+    if (c == EOF && ferror(mainFile))
+    {
+      ThrowError(ERR_INTERNAL);
+      exit(ERR_INTERNAL);
+    }
+
+    int commentNewlines = 0;
+
+    if (c == '/' && TryComment(mainFile, &commentNewlines))
+    {
+      lineNumber += commentNewlines;
+      c = fgetc(mainFile);
+      continue;
+    }
+
+    return c;
+  }
+}
+
+// Slovo import už načetla větev pro identifikátory.
+static void CheckImport(FILE *mainFile)
+{
+  const char *expected = "ifj26";
+  int c = ImportNextChar(mainFile);
+
+  for (int i = 0; expected[i] != '\0'; i++)
+  {
+    if (c != expected[i])
+    {
+      ThrowError(ERR_SYNTAX);
+      exit(ERR_SYNTAX);
+    }
+
+    // Uvnitř ifj26 nepřeskakujeme bílé znaky.
+    if (expected[i + 1] != '\0')
+    {
+      c = fgetc(mainFile);
+
+      if (c == EOF && ferror(mainFile))
+      {
+        ThrowError(ERR_INTERNAL);
+        exit(ERR_INTERNAL);
+      }
+    }
+  }
+
+  if (ImportNextChar(mainFile) != '.')
+  {
+    ThrowError(ERR_SYNTAX);
+    exit(ERR_SYNTAX);
+  }
+
+  if (ImportNextChar(mainFile) != '*')
+  {
+    ThrowError(ERR_SYNTAX);
+    exit(ERR_SYNTAX);
+  }
+}
 //============================================================================
 //============================================================================
-FILE *mainFile;     // pointer to file
-int lineNumber = 1; // line in code start at 1
+FILE *mainFile; // pointer to file
 #pragma region Token Init
 void TokenInicializator(FILE *file)
 {
@@ -556,6 +633,63 @@ Token TokenGiver()
       returnToken.val.s = NULL;
       return returnToken;
     }
+    if (c == '@')
+    {
+      const char *expected = "main";
+
+      // Znak @ už je načtený. Musí bezprostředně následovat main.
+      for (int i = 0; expected[i] != '\0'; i++)
+      {
+        c = fgetc(mainFile);
+
+        if (c == EOF && ferror(mainFile))
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+          exit(ERR_INTERNAL);
+        }
+
+        if (c != expected[i])
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+          exit(ERR_LEX);
+        }
+      }
+
+      // Ověříme, že main není začátek delšího identifikátoru.
+      c = fgetc(mainFile);
+
+      if (c == EOF && ferror(mainFile))
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+        exit(ERR_INTERNAL);
+      }
+
+      if (IsIdentifierPart(c))
+      {
+        free(buffer);
+        ThrowError(ERR_LEX);
+        exit(ERR_LEX);
+      }
+
+      // Znak za anotací patří dalšímu zpracování.
+      if (c != EOF && ungetc(c, mainFile) == EOF)
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+        exit(ERR_INTERNAL);
+      }
+
+      returnToken.type = KW_MAIN;
+      returnToken.line = lineNumber;
+      returnToken.val.s = NULL;
+
+      free(buffer);
+      return returnToken;
+    }
+
 #pragma region Identifier //--------------------------------------------------------------------------------------------
     if (IsIdentifierStart(c)) // pokud znak může být začátkem identifikátoru
     {
@@ -597,7 +731,14 @@ Token TokenGiver()
       returnToken.type = KeywordOrIdentifier(buffer);
       returnToken.line = lineNumber;
       returnToken.val.s = NULL;
+      if (returnToken.type == KW_IMPORT)
+      {
+        free(buffer);
 
+        CheckImport(mainFile);
+
+        return returnToken;
+      }
       if (returnToken.type == T_ID)
       {
         returnToken.val.s = buffer;
@@ -609,6 +750,173 @@ Token TokenGiver()
     } // konec if (IsIdentifierStart(c))
   }
 #pragma endregion
+#pragma region String
+  if (c == '"')
+  {
+    int startLine = lineNumber;
+    bool multiline = false;
+    bool done = false;
+    int quotes = 0;
+
+    buffer[0] = '\0'; // Platný i pro prázdný řetězec.
+
+    c = fgetc(mainFile);
+
+    if (c == '"')
+    {
+      c = fgetc(mainFile);
+
+      if (c == '"')
+      {
+        // Tři úvodní uvozovky: víceřádkový řetězec.
+        multiline = true;
+        c = fgetc(mainFile);
+      }
+      else
+      {
+        // Dvě uvozovky: prázdný řetězec.
+        if (c == EOF && ferror(mainFile))
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+          exit(ERR_INTERNAL);
+        }
+
+        // Znak za prázdným řetězcem patří dalšímu tokenu.
+        if (c != EOF && ungetc(c, mainFile) == EOF)
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+          exit(ERR_INTERNAL);
+        }
+
+        done = true;
+      }
+    }
+
+    while (!done)
+    {
+      if (c == EOF)
+      {
+        ErrorCode error = ferror(mainFile) ? ERR_INTERNAL : ERR_LEX;
+        free(buffer);
+        ThrowError(error);
+        exit(error);
+      }
+
+      if (multiline)
+      {
+        if (c == '"')
+        {
+          quotes++;
+
+          if (quotes == 3)
+          {
+            break; // Tři uvozovky ukončují řetězec.
+          }
+
+          c = fgetc(mainFile);
+          continue;
+        }
+
+        // Jedna nebo dvě uvozovky jsou součástí obsahu.
+        while (quotes > 0)
+        {
+          char *temp = realloc(buffer, length + 2);
+
+          if (temp == NULL)
+          {
+            free(buffer);
+            ThrowError(ERR_INTERNAL);
+            exit(ERR_INTERNAL);
+          }
+
+          buffer = temp;
+          buffer[length++] = '"';
+          buffer[length] = '\0';
+          quotes--;
+        }
+
+        if (c == '\n')
+        {
+          lineNumber++;
+        }
+      }
+      else
+      {
+        if (c == '"')
+        {
+          break; // Konec běžného řetězce.
+        }
+
+        if (c == '\n')
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+          exit(ERR_LEX);
+        }
+
+        if (c == '\\')
+        {
+          c = fgetc(mainFile);
+
+          if (c == EOF && ferror(mainFile))
+          {
+            free(buffer);
+            ThrowError(ERR_INTERNAL);
+            exit(ERR_INTERNAL);
+          }
+
+          switch (c)
+          {
+          case '\\':
+            c = '\\';
+            break;
+          case '"':
+            c = '"';
+            break;
+          case 'n':
+            c = '\n';
+            break;
+          case 'r':
+            c = '\r';
+            break;
+          case 't':
+            c = '\t';
+            break;
+          default:
+            free(buffer);
+            ThrowError(ERR_LEX);
+            exit(ERR_LEX);
+          }
+        }
+      }
+
+      // Uložení jednoho znaku obsahu.
+      char *temp = realloc(buffer, length + 2);
+
+      if (temp == NULL)
+      {
+        free(buffer);
+        ThrowError(ERR_INTERNAL);
+        exit(ERR_INTERNAL);
+      }
+
+      buffer = temp;
+      buffer[length++] = (char)c;
+      buffer[length] = '\0';
+
+      c = fgetc(mainFile);
+    }
+
+    returnToken.type = T_STRING_LIT;
+    returnToken.line = startLine;
+    returnToken.val.s = buffer;
+
+    return returnToken;
+  }
+#pragma endregion
+
 #pragma region Paren ()
   if (c == '(' || c == ')' || c == '[' || c == ']')
   {
@@ -903,7 +1211,8 @@ Token TokenGiver()
   /*i nomine patris et filii et spiritus sancti */
   if (c == '=' || c == '<' || c == '>' ||
       c == '+' || c == '-' || c == '*' ||
-      c == '/' || c == '!' || c == ',' || c == ':') // podmínka pro specialní znaky, od nich se odvíjí stavy pro tokeny
+      c == '/' || c == '!' || c == ',' ||
+      c == ':' || c == ';') // podmínka pro specialní znaky, od nich se odvíjí stavy pro tokeny
   {
     ScannerState state = STATE_START;
 
@@ -945,7 +1254,9 @@ Token TokenGiver()
         case ':':
           state = STATE_COLON;
           break;
-
+        case ';':
+          state = STATE_SEMI;
+          break;
         default:
           break;
         }
@@ -995,6 +1306,9 @@ Token TokenGiver()
       case STATE_DIV:
         returnToken.type = T_DIV;
         goto operator_done;
+      case STATE_SEMI:
+        returnToken.type = T_SEMI;
+        goto operator_done;
       case STATE_EQ:
       case STATE_LE:
       case STATE_GR:
@@ -1017,7 +1331,6 @@ Token TokenGiver()
 
           break;
         }
-
         // Znak už nepatří do operátoru, vrátíme ho.
         if (c != EOF && ungetc(c, mainFile) == EOF)
         {
@@ -1070,7 +1383,6 @@ Token TokenGiver()
 
 // Testovacio soubor lex, spustit napsat výraz, zkontrolovat s TokType v structure.h
 // zatim z meho jemneho testzovaní funguje
-
 #pragma region Comments by authors
 // c je aktuální znak
 // automat

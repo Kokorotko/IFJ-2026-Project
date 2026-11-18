@@ -15,12 +15,39 @@ int main(void)
 
         if (token.type == T_ID || token.type == T_STRING_LIT)
         {
-            printf(", text: %s", token.val.s);
+            printf(", text: \"");
+
+            for (const char *p = token.val.s; *p != '\0'; p++)
+            {
+                switch (*p)
+                {
+                case '\n':
+                    printf("\\n");
+                    break;
+                case '\r':
+                    printf("\\r");
+                    break;
+                case '\t':
+                    printf("\\t");
+                    break;
+                case '\\':
+                    printf("\\\\");
+                    break;
+                case '"':
+                    printf("\\\"");
+                    break;
+                default:
+                    putchar(*p);
+                    break;
+                }
+            }
+
+            putchar('"');
             free(token.val.s);
         }
         else if (token.type == T_INT_LIT)
         {
-            printf(", hodnota: %lld", token.val.i);
+            printf(", hodnota: %d", token.val.i);
         }
         else if (token.type == T_DOUBLE_LIT)
         {
@@ -28,7 +55,7 @@ int main(void)
         }
         else if (token.type == T_INDENDATION)
         {
-            printf(", indent: %lld", token.val.i);
+            printf(", indent: %d", token.val.i);
         }
 
         putchar('\n');
