@@ -13,10 +13,14 @@
 #include <string.h>
 
 #include "structure.h"
+#include "codeStruct.h"
 
 #ifndef SEMATIX //Nedefinuj soubor znova, pokud uz je definovan
 #define SEMATIX
 
-//CODE
+/// @brief Vstupní bod sémantické analýzy.
+/// Projde všechny funkce a zkontroluje typy a definice a @main a doplní resultType ve výrazech.
+/// Při chybě volá ThrowError(ErrorCode), při úspěchu vrací ERR_OK.
+ErrorCode SemanticAnalysis(FuncDef *program);
 
 #endif
