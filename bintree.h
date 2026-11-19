@@ -8,7 +8,7 @@
 #define BINTREE_H
 
 #include "structure.h"
-#include "linkedlist.h"
+#include "linkedList.h"
 
 typedef Token TreeItem;
 

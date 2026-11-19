@@ -7,11 +7,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "bintree.h"
-#include "linkedlist.h"
+#include "linkedList.h"
 
 Tree_Node *CreateNode(TreeItem item, char *key)
 {
     Tree_Node *temp = (Tree_Node *)malloc(sizeof(Tree_Node));
+    if(temp == NULL){
+        return NULL;
+    }
     temp->data = item;
     temp->key = key;
     temp->left = NULL;
@@ -32,11 +35,17 @@ void DestroyTree(Tree_Node *root)
 
 bool InOrder(Head *list, Tree_Node *root)
 {
-    bool check; // pro kontrolu internal erroru z insertu
-    InOrder(list, root->left);
-    check = Insert(list, root->data);
-    return check;
-    InOrder(list, root->right);
+    //bool check; // pro kontrolu internal erroru z insertu
+    if(root == NULL){
+        return true;
+    }
+    if(InOrder(list, root->left) == false){
+        return false;
+    }
+    if(Insert(list, root->data) == false){
+        return false;
+    }
+    return InOrder(list, root->right);
 }
 
 int NodeHeight(Tree_Node *node)
@@ -135,27 +144,27 @@ Tree_Node *InsertNode(Tree_Node *node, TreeItem data, char *newnode_key)
     // LL-case
     if(balance < -1 && (strcmp(newnode_key, node->left->key) < 0))
     {
-        Rotate_Right(node);
+        return Rotate_Right(node);
     }
 
     // RR-case
     if(balance > 1 && (strcmp(newnode_key, node->right->key) > 0))
     {
-        Rotate_Left(node);
+        return Rotate_Left(node);
     }
 
     // LR-case
     if(balance < -1 && (strcmp(newnode_key, node->left->key) > 0))
     {
         node->left = Rotate_Left(node->left);
-        Rotate_Right(node);
+        return Rotate_Right(node);
     }
 
     // RL-case
     if(balance > 1 && (strcmp(newnode_key, node->right->key) < 0))
     {
         node->right = Rotate_Right(node->right);
-        Rotate_Left(node);
+        return Rotate_Left(node);
     }
 
     return node;
