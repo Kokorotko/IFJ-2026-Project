@@ -1,28 +1,27 @@
-//IFJ-2026-Překladač
-//xfranek00 - Kamil Franek
-//xhrusko00 - Ondřej Hruška
-//xkonvim00 - Martin Konvička
-//xklimat00 - Tomáš Klíma
+// IFJ-2026-Překladač
+// xfranek00 - Kamil Franek
+// xhrusko00 - Ondřej Hruška
+// xkonvim00 - Martin Konvička
+// xklimat00 - Tomáš Klíma
 
-#ifndef SYNTAX //Nedefinuj soubor znova, pokud uz je definovan
+#ifndef SYNTAX // Nedefinuj soubor znova, pokud uz je definovan
 #define SYNTAX
 
-#define MAX_RHS 10 //max right hand 
+#define MAX_RHS 10 // max right hand
 
 // include
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <math.h>
 #include <float.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "lex.h"
-#include "structure.h"
 #include "codeStruct.h"
+#include "lex.h"
 #include "linkedList.h"
 #include "stack.h"
-
+#include "structure.h"
 
 void Next();
 void Peek();

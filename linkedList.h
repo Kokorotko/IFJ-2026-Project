@@ -1,20 +1,18 @@
+#include "structure.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include "structure.h"
 
-#ifndef LINKEDLIST //Nedefinuj soubor znova, pokud uz je definovan
+#ifndef LINKEDLIST // Nedefinuj soubor znova, pokud uz je definovan
 #define LINKEDLIST
 
-typedef struct Node
-{
-    Token data;
-    struct Node *next;
+typedef struct Node {
+  Token data;
+  struct Node *next;
 } Node;
 
-typedef struct Head
-{
-    Node *first;
+typedef struct Head {
+  Node *first;
 } Head;
 
 void InitList(Head *list);
