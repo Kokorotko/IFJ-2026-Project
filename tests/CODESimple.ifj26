@@ -1,0 +1,36 @@
+import ifj26.*
+
+def test(): Int =
+    val par1 = 5
+    val par2 = 7
+    if (par1 >= par2) then
+        return 0
+    else
+        return 1
+
+@main
+def run(): Unit =
+    val t = test()
+    if t == 1 then
+        return 1
+    else
+        ()
+    return 0
+
+
+//"Znazorni jak by tato struktura (codeStruct.h) komunikovala mezi syntax/Sematix na tomto prikladu (kod nad)" -Claude my beloved
+//Program
+//├─ FuncDef test(): Int, isMain=false
+//│  └─ Block
+//│     ├─ VarDef val par1: DT_NONE = Int(5)
+//│     ├─ VarDef val par2: DT_NONE = Int(7)
+//│     └─ If  cond: Bin(>=, par1, par2)
+//│        ├─ then: Block[ Return Int(0) ]
+//│        └─ else: Block[ Return Int(1) ]
+//└─ FuncDef run(): Unit, isMain=true
+//   └─ Block
+//      ├─ VarDef val t: DT_NONE = Call test()
+//      ├─ If  cond: Bin(==, t, Int(1))
+//      │  ├─ then: Block[ Return Int(1) ]
+//      │  └─ else: Block[ () ]
+//      └─ Return Int(0)
