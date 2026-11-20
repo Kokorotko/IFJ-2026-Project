@@ -5,51 +5,10 @@
 //xklimat00 - Tomáš Klíma
 
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include "bintree.h"
-#include "linkedList.h"
 
-Tree_Node *CreateNode(TreeItem item, char *key)
-{
-    Tree_Node *temp = (Tree_Node *)malloc(sizeof(Tree_Node));
-    if(temp == NULL){
-        return NULL;
-    }
-    temp->data = item;
-    temp->key = key;
-    temp->left = NULL;
-    temp->right = NULL;
-    temp->height = 1;
-    return temp;
-}
-
-void DestroyTree(Tree_Node *root)
-{
-    if(root != NULL)
-    {
-        DestroyTree(root->left);
-        DestroyTree(root->right);
-        free(root);
-    }
-}
-
-bool InOrder(Head *list, Tree_Node *root)
-{
-    //bool check; // pro kontrolu internal erroru z insertu
-    if(root == NULL){
-        return true;
-    }
-    if(InOrder(list, root->left) == false){
-        return false;
-    }
-    if(Insert(list, root->data) == false){
-        return false;
-    }
-    return InOrder(list, root->right);
-}
-
-int NodeHeight(Tree_Node *node)
+static int NodeHeight(Tree_Node *node)
 {
     if(node == NULL)
     {
@@ -61,7 +20,7 @@ int NodeHeight(Tree_Node *node)
     }
 }
 
-void HeightUpdate(Tree_Node *node)
+static void HeightUpdate(Tree_Node *node)
 {
     int height_l = NodeHeight(node->left);
     int height_r = NodeHeight(node->right);
@@ -77,7 +36,7 @@ void HeightUpdate(Tree_Node *node)
     }
 }
 
-int HeightBalance_Weight(Tree_Node *node)
+static int HeightBalance_Weight(Tree_Node *node)
 {
     if(node == NULL)
     {
@@ -90,7 +49,7 @@ int HeightBalance_Weight(Tree_Node *node)
     }
 }
 
-Tree_Node *Rotate_Right(Tree_Node *node_y)
+static Tree_Node *Rotate_Right(Tree_Node *node_y)
 {
     Tree_Node *node_x = node_y->left;
     Tree_Node *tree_t2 = node_x->right;
@@ -104,7 +63,7 @@ Tree_Node *Rotate_Right(Tree_Node *node_y)
     return node_x;
 }
 
-Tree_Node *Rotate_Left(Tree_Node *node_x)
+static Tree_Node *Rotate_Left(Tree_Node *node_x)
 {
     Tree_Node *node_y = node_x->right;
     Tree_Node *tree_t2 = node_y->left;
@@ -118,24 +77,87 @@ Tree_Node *Rotate_Left(Tree_Node *node_x)
     return node_y;
 }
 
-Tree_Node *InsertNode(Tree_Node *node, TreeItem data, char *newnode_key)
+static char *DuplicateKey(const char *key)
+{
+    size_t length = strlen(key) + 1;
+    char *copy = malloc(length);
+    if(copy == NULL)
+    {
+        return NULL;
+    }
+    memcpy(copy, key, length);
+    return copy;
+}
+
+static Tree_Node *CreateNode(const char *key, void *data)
+{
+    Tree_Node *node = malloc(sizeof(Tree_Node));
+    if(node == NULL)
+    {
+        return NULL;
+    }
+
+    node->key = DuplicateKey(key);
+    if(node->key == NULL)
+    {
+        free(node);
+        return NULL;
+    }
+
+    node->data = data;
+    node->left = NULL;
+    node->right = NULL;
+    node->height = 1;
+    return node;
+}
+
+void DestroyTree(Tree_Node *root, FreeDataFnc free_data)
+{
+    if(root == NULL)
+    {
+        return;
+    }
+    DestroyTree(root->left, free_data);
+    DestroyTree(root->right, free_data);
+
+    if(free_data != NULL && root->data != NULL)
+    {
+        free_data(root->data);
+    }
+    free(root->key);
+    free(root);
+}
+
+Tree_Node *InsertNode(Tree_Node *node, void *data, const char *key, TreeStatus *status)
 {
     if(node == NULL)
     {
-        return CreateNode(data, newnode_key);
+        Tree_Node *temp_node = CreateNode(key, data);
+        if(temp_node == NULL)
+        {
+            *status = Tree_MEM_ERR;
+        }
+        return temp_node;
     }
     
-    if(strcmp(newnode_key, node->key) < 0)
+    int key_compare = strcmp(key, node->key);
+    if(key_compare < 0)
     {
-        node->left = InsertNode(node->left, data, newnode_key);
+        node->left = InsertNode(node->left, data, key, status);
     }
-    else if(strcmp(newnode_key, node->key ) > 0)
+    else if(key_compare > 0)
     {
-        node->right = InsertNode(node->right, data, newnode_key);
+        node->right = InsertNode(node->right, data, key, status);
     }
+    // key_compare == 0
     else
     {
-        node->data = data;
+        *status = Tree_DUPLICATE;
+        return node;
+    }
+
+    if(*status != Tree_OK)
+    {
         return node;
     }
 
@@ -143,26 +165,26 @@ Tree_Node *InsertNode(Tree_Node *node, TreeItem data, char *newnode_key)
     int balance = HeightBalance_Weight(node);
 
     // LL-case
-    if(balance < -1 && (strcmp(newnode_key, node->left->key) < 0))
+    if(balance < -1 && HeightBalance_Weight(node->left) < 0)
     {
         return Rotate_Right(node);
     }
 
     // RR-case
-    if(balance > 1 && (strcmp(newnode_key, node->right->key) > 0))
+    if(balance > 1 && HeightBalance_Weight(node->right) > 0)
     {
         return Rotate_Left(node);
     }
 
     // LR-case
-    if(balance < -1 && (strcmp(newnode_key, node->left->key) > 0))
+    if(balance < -1 && HeightBalance_Weight(node->left) > 0)
     {
         node->left = Rotate_Left(node->left);
         return Rotate_Right(node);
     }
 
     // RL-case
-    if(balance > 1 && (strcmp(newnode_key, node->right->key) < 0))
+    if(balance > 1 && HeightBalance_Weight(node->right) < 0)
     {
         node->right = Rotate_Right(node->right);
         return Rotate_Left(node);
