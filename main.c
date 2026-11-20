@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "lex.h"
+#include "sematix.h"
 #include "syntax.h"
 
 // #include "sematix.h"
@@ -19,8 +20,10 @@ int main(/*int argc, char *argv[]*/) {
   TokenInicializator(stdin); // Standard Input
   FuncDef *program;          // AST Strom
   SyntaxChecker(&program);
-  // Sematix check
-  // Semathics();
+  int errorCode = SemanticAnalysis(program);
+  if (errorCode != 0) {
+    ThrowError(errorCode); // returns
+  }
   // GenerateCode();
   return 0;
 }
