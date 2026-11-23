@@ -11,13 +11,21 @@ CC = clang
 CFLAGS = -Wall -Wextra -std=c17 -g -MMD -MP
 
 # Soubory
-EXE = ifj26 #Nazev output souboru
-SRC = $(wildcard *.c) #vezme všechny .c soubory
-HDR = $(wildcard *.h) #vezme všechny .h soubory
+EXE = ifj26
+#Nazev output souboru
+SRC = $(wildcard *.c)
+#vezme všechny .c soubory
+HDR = $(wildcard *.h)
+#vezme všechny .h soubory
 OBJ = $(SRC:.c=.o)
-DEP = $(OBJ:.o=.d) #Vygeneruje závislost pro .c a .h soubory pro kompilaci
+DEP = $(OBJ:.o=.d)
+#Vygeneruje závislost pro .c a .h soubory pro kompilaci
+IC26INT = ic26int
+#testovaci output file
+TESTDIR = tests
+#testovaci dir
 
-.PHONY: all build check build-check run memtest format clean
+.PHONY: all build check build-check run memtest format clean test testSimple
 
 all: build
 
@@ -58,6 +66,14 @@ clean:
 	rm -f $(EXE) $(OBJ) $(DEP)
 	@echo "[INFO] Temporary files removed."
 
+test: $(EXE)
+	./$(EXE) < $(TESTDIR)/CODE.ifj26 > $(TESTDIR)/CODE.code
+	$(IC26INT) $(TESTDIR)/CODE.code
+
+testSimple: $(EXE)
+	./$(EXE) < $(TESTDIR)/CODESimple.ifj26 > $(TESTDIR)/CODESimple.code
+	$(IC26INT) $(TESTDIR)/CODESimple.code
+
 help:
 	@echo === COMPILATION INSTRUCTIONS ===
 	@echo 			!LINUX ONLY!
@@ -69,6 +85,8 @@ help:
 	@echo make memtest  - Run Valgrind memory test
 	@echo make format   - Format source files with clang-format
 	@echo make clean    - Remove compiled files
+	@echo make testSimple - Runs a simple ifj2026 to ifjcode2026 file
+	@echo make test     - Runs a complex ifj2026 to ifjcode2026 file
 	@echo make help     - Shows help
 
 -include $(DEP)

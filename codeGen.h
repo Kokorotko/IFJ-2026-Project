@@ -4,15 +4,17 @@
 // xkonvim00 - Martin Konvička
 // xklimat00 - Tomáš Klíma
 
-// include
-#include <float.h>
-#include <math.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#ifndef CODEGEN_H
+#define CODEGEN_H
 
-#ifndef CODEGEN // Nedefinuj soubor znova, pokud uz je definovan
-#define CODEGEN
+#include <stdio.h>
+
+#include "codeStruct.h"
+
+/// @brief Vygeneruje IFJcode26 pro celý program
+/// @param funcs Seznam funkcí po sémantice
+/// @param output Kam se kód vypíše (typicky stdout)
+/// @return 0 = OK, 99 = interní chyba překladače
+int GenProgram(FuncDef *program, FILE *output);
 
 #endif
