@@ -53,25 +53,23 @@ typedef struct {
 /// resultType ve výrazech. Při chybě volá ThrowError(ErrorCode), při úspěchu
 /// vrací ERR_OK.
 ErrorCode SemanticAnalysis(FuncDef *program);
-static bool IsNumeric(DataType t);
-static bool isTypeCompatible(DataType t, DataType d);
-static void ScopePush(SemContext *ctx);
-static void ScopePop(SemContext *ctx);
-static VarSym *FindVarInCurScope(SemContext *ctx, const char *name);
-static VarSym *FindVar(SemContext *ctx, const char *name);
-static void AddVar(SemContext *ctx, char *name, DataType type, bool isVar);
-static FuncSym *FindFunc(SemContext *ctx, const char *name);
-static void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
-                    DataType returnType, bool isAnyParam);
-static void FreeFunctions(SemContext *ctx);
-static void RegisterBuiltins(SemContext *ctx);
-static DataType analyzeExpression(SemContext *ctx, Expression *exp);
-static DataType analyzeBlock(SemContext *ctx, Block *block,
-                             bool *alwaysReturns);
-static DataType analyzeStatement(SemContext *ctx, Statement *sta,
-                                 bool *alwaysReturns, bool isLastInFunc);
-static DataType analyzeBlock(SemContext *ctx, Block *block,
-                             bool *alwaysReturns);
+bool IsNumeric(DataType t);
+bool isTypeCompatible(DataType t, DataType d);
+void ScopePush(SemContext *ctx);
+void ScopePop(SemContext *ctx);
+VarSym *FindVarInCurScope(SemContext *ctx, const char *name);
+VarSym *FindVar(SemContext *ctx, const char *name);
+void AddVar(SemContext *ctx, char *name, DataType type, bool isVar);
+FuncSym *FindFunc(SemContext *ctx, const char *name);
+void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
+             DataType returnType, bool isAnyParam);
+void FreeFunctions(SemContext *ctx);
+void RegisterBuiltins(SemContext *ctx);
+DataType analyzeExpression(SemContext *ctx, Expression *exp);
+DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns);
+DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
+                          bool isLastInFunc);
+DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns);
 ErrorCode SemanticAnalysis(FuncDef *program);
 
 #endif

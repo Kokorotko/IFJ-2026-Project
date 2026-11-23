@@ -15,9 +15,9 @@
 #include "sematix.h"
 #include "syntax.h"
 
-static bool IsNumeric(DataType t) { return (t == DT_INT || t == DT_DOUBLE); }
+bool IsNumeric(DataType t) { return (t == DT_INT || t == DT_DOUBLE); }
 // Jedina konverze povolena INT -> DOUBLE
-static bool isTypeCompatible(DataType t, DataType d) {
+bool isTypeCompatible(DataType t, DataType d) {
   if (t == d) {
     return true;
   }
@@ -27,7 +27,7 @@ static bool isTypeCompatible(DataType t, DataType d) {
   return false;
 }
 
-static void ScopePush(SemContext *ctx) {
+void ScopePush(SemContext *ctx) {
   Scope *newScope = (Scope *)malloc(sizeof(Scope));
   MallocChecker(newScope);
   newScope->vars = NULL;
@@ -35,7 +35,7 @@ static void ScopePush(SemContext *ctx) {
   ctx->curScope = newScope;
 }
 
-static void ScopePop(SemContext *ctx) {
+void ScopePop(SemContext *ctx) {
   if (ctx->curScope == NULL) {
     return;
   }
@@ -50,7 +50,7 @@ static void ScopePop(SemContext *ctx) {
   free(old);
 }
 
-static VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
+VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
   if (ctx->curScope == NULL) {
     return NULL;
   }
@@ -62,7 +62,7 @@ static VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
   return NULL;
 }
 
-static VarSym *FindVar(SemContext *ctx, const char *name) {
+VarSym *FindVar(SemContext *ctx, const char *name) {
   for (Scope *s = ctx->curScope; s != NULL; s = s->parent) {
     for (VarSym *v = s->vars; v != NULL; v = v->next) {
       if (strcmp(v->name, name) == 0) {
@@ -73,7 +73,7 @@ static VarSym *FindVar(SemContext *ctx, const char *name) {
   return NULL;
 }
 
-static void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
+void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
   if (FindVarInCurScope(ctx, name) != NULL) {
     ThrowError(ERR_REDEFINED);
   }
@@ -86,7 +86,7 @@ static void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
   ctx->curScope->vars = v;
 }
 
-static FuncSym *FindFunc(SemContext *ctx, const char *name) {
+FuncSym *FindFunc(SemContext *ctx, const char *name) {
   for (FuncSym *f = ctx->functions; f != NULL; f = f->next) {
     if (strcmp(f->name, name) == 0) {
       return f;
@@ -95,8 +95,8 @@ static FuncSym *FindFunc(SemContext *ctx, const char *name) {
   return NULL;
 }
 
-static void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
-                    DataType returnType, bool isAnyParam) {
+void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
+             DataType returnType, bool isAnyParam) {
   if (FindFunc(ctx, name) != NULL) {
     ThrowError(ERR_REDEFINED);
   }
@@ -111,7 +111,7 @@ static void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
   ctx->functions = f;
 }
 
-static void FreeFunctions(SemContext *ctx) {
+void FreeFunctions(SemContext *ctx) {
   FuncSym *f = ctx->functions;
   while (f != NULL) {
     FuncSym *next = f->next;
@@ -121,14 +121,13 @@ static void FreeFunctions(SemContext *ctx) {
   ctx->functions = NULL;
 }
 
-static Param p_toInt[] = {{"value", DT_DOUBLE}};
-static Param p_strLength[] = {{"value", DT_STRING}};
-static Param p_substr[] = {
-    {"value", DT_STRING}, {"start", DT_INT}, {"end", DT_INT}};
-static Param p_ord[] = {{"value", DT_STRING}, {"index", DT_INT}};
-static Param p_chr[] = {{"code", DT_INT}};
+Param p_toInt[] = {{"value", DT_DOUBLE}};
+Param p_strLength[] = {{"value", DT_STRING}};
+Param p_substr[] = {{"value", DT_STRING}, {"start", DT_INT}, {"end", DT_INT}};
+Param p_ord[] = {{"value", DT_STRING}, {"index", DT_INT}};
+Param p_chr[] = {{"code", DT_INT}};
 
-static void RegisterBuiltins(SemContext *ctx) {
+void RegisterBuiltins(SemContext *ctx) {
   AddFunc(ctx, "print", NULL, 1, DT_UNIT, true);
   AddFunc(ctx, "readLine", NULL, 0, DT_STRING, false);
   AddFunc(ctx, "readInt", NULL, 0, DT_INT, false);
@@ -141,7 +140,7 @@ static void RegisterBuiltins(SemContext *ctx) {
   AddFunc(ctx, "chr", p_chr, 1, DT_STRING, false);
 }
 
-static DataType analyzeExpression(SemContext *ctx, Expression *exp) {
+DataType analyzeExpression(SemContext *ctx, Expression *exp) {
   if (exp == NULL) {
     return DT_NONE;
   }
@@ -158,13 +157,14 @@ static DataType analyzeExpression(SemContext *ctx, Expression *exp) {
   case E_UNIT:
     exp->resultType = DT_UNIT;
     return DT_UNIT;
-  case E_VAR:
+  case E_VAR: { // aby WC23 nehazel warning
     VarSym *v = FindVar(ctx, exp->data.name);
     if (v == NULL) {
       ThrowError(ERR_UNDEFINED);
     }
     exp->resultType = v->type;
     return v->type;
+  }
   case E_UNARY: {
     DataType t = analyzeExpression(ctx, exp->data.unitary);
     if (exp->operation == T_MINUS || exp->operation == P_UMINUS ||
@@ -256,8 +256,8 @@ static DataType analyzeExpression(SemContext *ctx, Expression *exp) {
   }
 }
 
-static DataType analyzeStatement(SemContext *ctx, Statement *sta,
-                                 bool *alwaysReturns, bool isLastInFunc) {
+DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
+                          bool isLastInFunc) {
   *alwaysReturns = false;
   if (sta == NULL) {
     return DT_UNIT;
@@ -372,8 +372,7 @@ static DataType analyzeStatement(SemContext *ctx, Statement *sta,
   }
 }
 
-static DataType analyzeBlock(SemContext *ctx, Block *block,
-                             bool *alwaysReturns) {
+DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns) {
   *alwaysReturns = false;
   if (block == NULL || block->first == NULL) {
     return DT_UNIT;
