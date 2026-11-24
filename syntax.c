@@ -63,8 +63,9 @@ static bool imported = false;    // Jestli přišel token KW_IMPORT
 /// si ten token)
 void Next() {
   if (tokenPeaked) // další token je v nextToken
-  {
+  {    
     token = nextToken;
+    tokenPeaked = false; //proti zacyklinenim
     switch (token.type) {
     case T_SKIP:
       Next();
@@ -72,8 +73,7 @@ void Next() {
       break;
     default:
       break;
-    }
-    tokenPeaked = false;
+    }    
   } else // Token z Lexoru
   {
     token = TokenGiver();
@@ -99,7 +99,9 @@ void Peek() {
   if (!tokenPeaked) // Peek může vidět pouze 1 token dopředu
   {
     tokenPeaked = true;
-    nextToken = TokenGiver();
+    do { 
+      nextToken = TokenGiver(); 
+    } while (nextToken.type == T_SKIP);
     if (imported &&
         nextToken.type ==
             KW_IMPORT) // Kontrola více Import (Import může být pouze 1)
@@ -266,10 +268,6 @@ Statement *ParseAssign() {
 Expression *ParseExpressionOrCall() {
   //= *neco*
   if (token.type == T_ID) {
-    Peek();
-    if (nextToken.type == T_LPAREN) {
-      return ParseCall();
-    }
     return ParseExpression();
   } else if (token.type == T_DOUBLE_LIT || token.type == T_INT_LIT ||
              token.type == T_STRING_LIT || token.type == T_LPAREN ||
@@ -398,6 +396,18 @@ Expression *ParseExpression() {
       if (item.token.type == T_MINUS && !previousWasOperand) {
         item.token.type = P_UMINUS; // Zaměnit za unární mínus
       }
+
+      //FUNEXP addon
+      bool isCall = false;
+      int savedParenDepth = parenDepth;
+      if (token.type == T_ID) {
+        Peek();
+        if (nextToken.type == T_LPAREN) {
+          isCall = true;
+          item.e = ParseCall(); // sežere ID(*sum*) a rekurzivně zavolá ParseExpression
+        }
+      }
+
       if (top->token.type == P_NONTERM) // pokud je na vrchu zasobniku E
       {
         StackPopReturn(stack, top);        // grab the E
@@ -407,8 +417,15 @@ Expression *ParseExpression() {
         StackPush(stack, itemMiddleToken); //<
       }
       StackPush(stack, item); // Token
-      UpdateState(token.type);
-      Next();
+      if (isCall) //FUNEXP addon
+      { 
+        previousWasOperand = true; 
+        parenDepth = savedParenDepth; 
+      }
+      else  
+      { 
+        UpdateState(token.type); Next(); 
+      }
       free(top);
       break;
     }
@@ -444,7 +461,7 @@ Expression *ParseExpression() {
     }
     case E: // Push without <
     {
-      StackItem itemToken;
+      StackItem itemToken = {0}; //null pro vsechny hodnoty
       itemToken.token = token;
       StackPush(stack, itemToken); // push el Token
       UpdateState(token.type);
@@ -511,6 +528,10 @@ Expression *ExpressionTransform(StackItem *item) {
   Expression *e;
   switch (item->token.type) {
   case T_ID: {
+    if (item->e != NULL) //pokud už je expression vyplnen, vrat ho
+    {
+      return item->e;
+    }
     e = NewExpression(E_VAR);
     e->data.name = strDuplicate(item->token.val.s); // IDname
     break;
