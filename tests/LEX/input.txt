@@ -11,8 +11,14 @@ val n = readInt()
 val result = factorial(n)
 print(result)
 print("\n")
+void function(
+    sloo,
+    sloacs
+)
+/*
+kment
+*/
 
-    
 
 
 
