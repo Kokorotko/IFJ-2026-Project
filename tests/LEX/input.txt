@@ -19,7 +19,9 @@ void function(
 kment
 */
 
-
+"""
+slova
+ """
 
 
 slovo

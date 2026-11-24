@@ -424,9 +424,9 @@ Token TokenGiver() // thsi shti...
         // Počítáme pouze odsazení před prvním znakem řádku.
         while (c == ' ' || c == '\t')
         {
-          if (c == ' ')
+          if (c == ' ') // pokud je znak mezera
           {
-            numOfSpaces++;
+            numOfSpaces++; // počet mezer ++
           }
           else
           {
@@ -450,7 +450,7 @@ Token TokenGiver() // thsi shti...
           c = fgetc(mainFile);
 
           // Mezery za komentářem už nejsou úvodní odsazení.
-          while (c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f')
+          while (c == ' ' || c == '\t' || c == '\r')
           {
             c = fgetc(mainFile);
           }
@@ -608,15 +608,15 @@ Token TokenGiver() // thsi shti...
         ThrowError(ERR_INTERNAL); // vrať internal error
       }
 
-      returnToken.type = T_EOF;
-      returnToken.line = lineNumber;
-      returnToken.val.s = NULL;
-      return returnToken;
+      returnToken.type = T_EOF;      // token konec souboru EOF
+      returnToken.line = lineNumber; // číslo řádku
+      returnToken.val.s = NULL;      // hodnota
+      return returnToken;            // vrať token
     }
     // zase moje
-    if (c == '@')
+    if (c == '@') // pokud je znak '@' implikuje to main
     {
-      const char *expected = "main";
+      const char *expected = "main"; // nastavení očekávaného stringu na "main"
 
       // Znak @ už je načtený. Musí bezprostředně následovat main.
       for (int i = 0; expected[i] != '\0'; i++)
@@ -663,9 +663,9 @@ Token TokenGiver() // thsi shti...
         exit(ERR_INTERNAL);
       }
 
-      returnToken.type = KW_MAIN;
-      returnToken.line = lineNumber;
-      returnToken.val.s = NULL;
+      returnToken.type = KW_MAIN;    // vrácení Keyword main
+      returnToken.line = lineNumber; // číslo řádku
+      returnToken.val.s = NULL;      // hodnota NULL, je to keyword
 
       free(buffer);
       return returnToken;
@@ -676,9 +676,7 @@ Token TokenGiver() // thsi shti...
     {
       do
       {
-        char *temp = realloc(
-            buffer, length + 2); // realokace paměti na  znak + ukončující znak
-
+        char *temp = realloc(buffer, length + 2); // realokace paměti na  znak + ukončující znak
         if (temp == NULL)
         {
           free(buffer);
@@ -706,21 +704,18 @@ Token TokenGiver() // thsi shti...
         ThrowError(ERR_INTERNAL);
       }
 
-      if (length == 1 &&
-          buffer[0] == '_') // error jsut underscore, not on my watch
+      if (length == 1 && buffer[0] == '_') // ověření zdali identifikátor není jen _ - "error jsut underscore, not on my watch"
       {
         free(buffer);
         ThrowError(ERR_LEX);
       }
-      returnToken.type = KeywordOrIdentifier(buffer);
+      returnToken.type = KeywordOrIdentifier(buffer); // do typu tokenu přiřadí typ na základě funkce KeywordOrIdentifier
       returnToken.line = lineNumber;
       returnToken.val.s = NULL;
       if (returnToken.type == KW_IMPORT)
       {
         free(buffer);
-
         CheckImport(mainFile);
-
         return returnToken;
       }
       if (returnToken.type == T_ID)
@@ -735,26 +730,26 @@ Token TokenGiver() // thsi shti...
   }
 #pragma endregion
 #pragma region String
-  if (c == '"')
+  if (c == '"') // pokud je znak '"'
   {
-    int startLine = lineNumber;
-    bool multiline = false;
-    bool done = false;
-    int quotes = 0;
+    int startLine = lineNumber; // začátek stringu
+    bool multiline = false;     // zatím je nastaven jako jednořádkový string
+    bool done = false;          // proměnná pro konec stringu
+    int quotes = 0;             // počet uvozovek
 
     buffer[0] = '\0'; // Platný i pro prázdný řetězec.
 
-    c = fgetc(mainFile);
+    c = fgetc(mainFile); // načti znak
 
-    if (c == '"')
+    if (c == '"') // pokud je '"'
     {
-      c = fgetc(mainFile);
+      c = fgetc(mainFile); // načti znak
 
-      if (c == '"')
+      if (c == '"') // pokud je '"'
       {
         // Tři úvodní uvozovky: víceřádkový řetězec.
         multiline = true;
-        c = fgetc(mainFile);
+        c = fgetc(mainFile); // načti znak
       }
       else
       {
@@ -790,25 +785,25 @@ Token TokenGiver() // thsi shti...
 
       if (multiline)
       {
-        if (c == '"')
+        if (c == '"') // pokud je znak '"'
         {
-          quotes++;
+          quotes++; // počet uvozovek +1
 
           if (quotes == 3)
           {
             break; // Tři uvozovky ukončují řetězec.
           }
 
-          c = fgetc(mainFile);
+          c = fgetc(mainFile); // další znak
           continue;
         }
 
         // Jedna nebo dvě uvozovky jsou součástí obsahu.
         while (quotes > 0)
         {
-          char *temp = realloc(buffer, length + 2);
+          char *temp = realloc(buffer, length + 2); // realokace paměti
 
-          if (temp == NULL)
+          if (temp == NULL) // ověření realokace
           {
             free(buffer);
             ThrowError(ERR_INTERNAL);
@@ -877,7 +872,7 @@ Token TokenGiver() // thsi shti...
       }
 
       // Uložení jednoho znaku obsahu.
-      char *temp = realloc(buffer, length + 2);
+      char *temp = realloc(buffer, length + 2); // realokace paměti
 
       if (temp == NULL)
       {
@@ -893,31 +888,30 @@ Token TokenGiver() // thsi shti...
       c = fgetc(mainFile);
     }
 
-    returnToken.type = T_STRING_LIT;
-    returnToken.line = startLine;
-    returnToken.val.s = buffer;
-
+    returnToken.type = T_STRING_LIT; // vrací token string
+    returnToken.line = startLine;    // řádek
+    returnToken.val.s = buffer;      // string jako takový
     return returnToken;
   }
 #pragma endregion
 
 #pragma region Paren ()
-  if (c == '(' || c == ')' || c == '[' || c == ']')
+  if (c == '(' || c == ')' || c == '[' || c == ']') // úvodní if
   {
     switch (c)
     {
     case '(':
       parenDepth++;
-      returnToken.type = T_LPAREN;
+      returnToken.type = T_LPAREN; // token levá závorka
       break;
     case ')':
-      if (parenDepth > 0)
+      if (parenDepth > 0) // pokud je počet závorek větší než nula, někde nebyly uzavřeny
       {
-        parenDepth--;
+        parenDepth--; // snížení počtu -> uzavřeno
       }
-      returnToken.type = T_RPAREN;
+      returnToken.type = T_RPAREN; // vrácení pravá závorka
       break;
-
+      // hranaté závorky
     case '[':
       ThrowError(ERR_LEX);
       free(buffer);
@@ -938,15 +932,15 @@ Token TokenGiver() // thsi shti...
 
 #pragma endregion
 #pragma region Num
-  if (IsDigit(c) || c == '.')
+  if (IsDigit(c) || c == '.') // číslo může začínat číslem (int / double) nebo tečkou (double)
   {
-    NumberState numState;
+    NumberState numState; // inicializace numState
     bool done = false;
 
     // Počáteční stav nastavíme jen jednou.
-    if (c == '.')
+    if (c == '.') // číslo začínající přes tečku
     {
-      int next = fgetc(mainFile);
+      int next = fgetc(mainFile); // načteme další znak
 
       if (next == EOF && ferror(mainFile))
       {
@@ -961,7 +955,7 @@ Token TokenGiver() // thsi shti...
         ThrowError(ERR_INTERNAL);
       }
 
-      if (!IsDigit(next))
+      if (!IsDigit(next)) // pokud další znak není číslo, jedná se jen o tečku
       {
         returnToken.type = T_DOT;
         returnToken.line = lineNumber;
@@ -971,17 +965,17 @@ Token TokenGiver() // thsi shti...
         return returnToken;
       }
 
-      numState = NUM_DOT;
+      numState = NUM_DOT; // pokud nebyl vrácen token T_DOT, jedná se o číslo
     }
     else
     {
-      numState = NUM_INTEGER;
+      numState = NUM_INTEGER; // pokud není tečka, jde o číslo, zatím INT
     }
 
     do
     {
       // Uložíme aktuální znak do bufferu.
-      char *temp = realloc(buffer, length + 2);
+      char *temp = realloc(buffer, length + 2); // realokace paměti
 
       if (temp == NULL)
       {
@@ -995,7 +989,7 @@ Token TokenGiver() // thsi shti...
       buffer[length] = '\0';
 
       // Načteme další znak a rozhodneme, co s ním.
-      c = fgetc(mainFile);
+      c = fgetc(mainFile); // další znak
 
       if (c == EOF && ferror(mainFile))
       {
@@ -1003,25 +997,25 @@ Token TokenGiver() // thsi shti...
         ThrowError(ERR_INTERNAL);
       }
 #pragma region NumState Switch
-      switch (numState)
+      switch (numState) // swithc pro rozhodování o num state
       {
 #pragma region Int
-      case NUM_INTEGER:
+      case NUM_INTEGER: // case pro INT
         if (IsDigit(c))
         {
-          numState = NUM_INTEGER;
+          numState = NUM_INTEGER; // pokud je dašlí znak čílslo, zůstává v int
         }
         else if (c == '.')
         {
-          numState = NUM_DOT;
+          numState = NUM_DOT; // pokud je tečka, opět stav NUM_DOT
         }
         else if (c == 'e' || c == 'E')
         {
-          numState = NUM_EXP_START;
+          numState = NUM_EXP_START; // stav Exponent
         }
         else if (c == '_')
         {
-          numState = NUM_INTEGER_UNDERCORE;
+          numState = NUM_INTEGER_UNDERCORE; // int podtržítko
         }
         else
         {
@@ -1033,7 +1027,7 @@ Token TokenGiver() // thsi shti...
       case NUM_DOT:
         if (IsDigit(c))
         {
-          numState = NUM_FRACTION;
+          numState = NUM_FRACTION; // pokud je za tečkou číslo, jdeme do double
         }
         else
         {
@@ -1046,19 +1040,19 @@ Token TokenGiver() // thsi shti...
       case NUM_FRACTION:
         if (IsDigit(c))
         {
-          numState = NUM_FRACTION;
+          numState = NUM_FRACTION; // stav zlomek
         }
-        else if (c == 'e' || c == 'E')
+        else if (c == 'e' || c == 'E') // změna stvu na exponent
         {
           numState = NUM_EXP_START;
         }
-        else if (c == 'd' || c == 'D')
+        else if (c == 'd' || c == 'D') // určení typu a konec čísla
         {
           numState = NUM_SUFFIX;
         }
         else if (c == '_')
         {
-          numState = NUM_FRACTION_UNDERCORE;
+          numState = NUM_FRACTION_UNDERCORE; // podtržítko v double
         }
         else
         {
@@ -1068,13 +1062,13 @@ Token TokenGiver() // thsi shti...
 #pragma endregion
 #pragma region Exponent
       case NUM_EXP_START:
-        if (c == '+' || c == '-')
+        if (c == '+' || c == '-') // znamánko exponentu
         {
-          numState = NUM_EXP_SIGN;
+          numState = NUM_EXP_SIGN; // stav znaménko exponentu
         }
         else if (IsDigit(c))
         {
-          numState = NUM_EXP_DIGITS;
+          numState = NUM_EXP_DIGITS; // stav čísla v exponentu
         }
         else
         {
@@ -1084,10 +1078,10 @@ Token TokenGiver() // thsi shti...
         break;
 #pragma endregion
 #pragma region EXP SIGN
-      case NUM_EXP_SIGN:
+      case NUM_EXP_SIGN: //  znaménko exponentu
         if (IsDigit(c))
         {
-          numState = NUM_EXP_DIGITS;
+          numState = NUM_EXP_DIGITS; // čísla v exponentu
         }
         else
         {
@@ -1100,15 +1094,15 @@ Token TokenGiver() // thsi shti...
       case NUM_EXP_DIGITS:
         if (IsDigit(c))
         {
-          numState = NUM_EXP_DIGITS;
+          numState = NUM_EXP_DIGITS; // pokud znak byl číslo, zustává ve stejném stavu
         }
-        else if (c == 'd' || c == 'D')
+        else if (c == 'd' || c == 'D') // pořechod do stavu suffix
         {
           numState = NUM_SUFFIX;
         }
         else if (c == '_')
         {
-          numState = NUM_EXP_UNDERSCORE;
+          numState = NUM_EXP_UNDERSCORE; // podtržítko v exponentu
         }
         else
         {
@@ -1161,7 +1155,7 @@ Token TokenGiver() // thsi shti...
     int wrtieIndex = 0;
     for (int readIndex = 0; readIndex < length; readIndex++)
     {
-      if (buffer[readIndex] != '_')
+      if (buffer[readIndex] != '_') // zápis čísla bez podttržítek
       {
         buffer[wrtieIndex] = buffer[readIndex];
         wrtieIndex++;
@@ -1359,6 +1353,7 @@ Token TokenGiver() // thsi shti...
     free(buffer);
     return returnToken;
   }
+  // ověření
   fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n", c,
           lineNumber, parenDepth); // kontrola
   free(buffer);
