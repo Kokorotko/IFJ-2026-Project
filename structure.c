@@ -5,7 +5,8 @@
 #include <stdlib.h>
 
 void ErrorHandlingSyntax(ErrorCode errorCode, Token token) {
-  fprintf(stderr, "Error on line: %i\nToken Type: %i\n", token.line, token.type);
+  fprintf(stderr, "Error on line: %i\nToken Type: %i\n", token.line,
+          token.type);
   exit(errorCode);
 }
 

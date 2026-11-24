@@ -17,8 +17,8 @@
 
 // Analýza funkce na požádání (volání před definicí u funkcí s odvozeným typem)
 static FuncDef *programFuncs = NULL;    // všechny uživatelské funkce
-static unsigned char *funcState = NULL; // 0 = čeká, 1 = rozpracovaná, 2 = hotová
-                                        // (index = pořadí ve zdroji)
+static unsigned char *funcState = NULL; // 0 = čeká, 1 = rozpracovaná, 2 =
+                                        // hotová (index = pořadí ve zdroji)
 
 static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx);
 static DataType AnalyzeBlockTail(SemContext *ctx, Block *block,

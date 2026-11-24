@@ -15,7 +15,7 @@ typedef enum {
   T_BLOCKEND,
   T_INDENDATION,
   T_ERROR,
-  T_SKIP, //Syntax preskoci tento Token
+  T_SKIP, // Syntax preskoci tento Token
   // literály a identifikátor
   T_ID,         // identifikátor
   T_INT_LIT,    // čislo int

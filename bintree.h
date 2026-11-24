@@ -28,7 +28,7 @@ typedef enum {
   Tree_OK,
   Tree_DUPLICATE, // Pokus o vložení klíče, který je již ve stromě, mělo by vést
                   // k ERR_REDEFINED
-  Tree_MEM_ERR // Chyba alokace paměti, mělo by vést k ERR_INTERNAL
+  Tree_MEM_ERR    // Chyba alokace paměti, mělo by vést k ERR_INTERNAL
 } TreeStatus;
 
 // Rekurzivně (přes Post-Order) uvolňuje alokovanou paměť stromu, uvolní paměť

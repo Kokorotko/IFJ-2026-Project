@@ -65,25 +65,25 @@ void Next() {
   if (tokenPeaked) // další token je v nextToken
   {
     token = nextToken;
-    switch (token.type)
-    {
+    switch (token.type) {
     case T_SKIP:
       Next();
       return;
       break;
-    default: break;
+    default:
+      break;
     }
     tokenPeaked = false;
   } else // Token z Lexoru
   {
     token = TokenGiver();
-    switch (token.type)
-    {
+    switch (token.type) {
     case T_SKIP:
       Next();
       return;
       break;
-    default: break;
+    default:
+      break;
     }
     if (imported &&
         token.type ==
@@ -271,14 +271,13 @@ Expression *ParseExpressionOrCall() {
       return ParseCall();
     }
     return ParseExpression();
-  } else if (token.type == T_DOUBLE_LIT || token.type == T_INT_LIT || token.type == T_STRING_LIT || token.type == T_LPAREN || token.type == T_MINUS)
-  {
+  } else if (token.type == T_DOUBLE_LIT || token.type == T_INT_LIT ||
+             token.type == T_STRING_LIT || token.type == T_LPAREN ||
+             token.type == T_MINUS) {
     return ParseExpression();
+  } else {
+    ErrorHandlingSyntax(ERR_SYNTAX, token);
   }
-    else
-    {
-      ErrorHandlingSyntax(ERR_SYNTAX, token);
-    }
   return NULL;
 }
 
@@ -554,9 +553,9 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out) {
   }
 
   // ( )
-  if (lenght == 2 && items[0].token.type == T_RPAREN && items[1].token.type == T_LPAREN)
-  {
-    out->e = NewExpression(E_UNIT); //Vzducho prazdno v zavorkach
+  if (lenght == 2 && items[0].token.type == T_RPAREN &&
+      items[1].token.type == T_LPAREN) {
+    out->e = NewExpression(E_UNIT); // Vzducho prazdno v zavorkach
     return true;
   }
 
@@ -729,7 +728,7 @@ Statement *ParseLine() {
   switch (token.type) {
   case KW_VAR:
   case KW_VAL: {
-    s = ParseVariable(); //var x = 5
+    s = ParseVariable(); // var x = 5
     ExpectStatementEnd();
     break;
   }
@@ -856,7 +855,7 @@ void SyntaxChecker(FuncDef **program) {
         KW_MAIN) // nastavení @main funkce (více @main si reší sematika)
     {
       nextIsMain = true;
-      Next(); //sežere KW_MAIN
+      Next();                  // sežere KW_MAIN
       if (token.type == T_EOL) // @main def ... na jednom řádku je taky platné
       {
         ExpectEndOfLine();
