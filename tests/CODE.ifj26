@@ -27,7 +27,7 @@ def run(): Unit =
   operators(five, ten)
   scopes()
   builtins()
-  val total = add3(
+  val total = add3( //Syntax Error Here
     five,
     ten,
     limit,

@@ -15,6 +15,28 @@
 #include "sematix.h"
 #include "syntax.h"
 
+// Analýza funkce na požádání (volání před definicí u funkcí s odvozeným typem)
+static FuncDef *programFuncs = NULL;    // všechny uživatelské funkce
+static unsigned char *funcState = NULL; // 0 = čeká, 1 = rozpracovaná, 2 = hotová
+                                        // (index = pořadí ve zdroji)
+
+static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx);
+static DataType AnalyzeBlockTail(SemContext *ctx, Block *block,
+                                 bool *alwaysReturns, bool isFuncTail);
+
+/// @brief Najde definici uživatelské funkce podle jména (NULL = vestavěná)
+/// @param index Pořadí funkce ve zdroji (index do funcState)
+static FuncDef *FindFuncDef(const char *name, int *index) {
+  int i = 0;
+  for (FuncDef *f = programFuncs; f != NULL; f = f->next, i++) {
+    if (strcmp(f->name, name) == 0) {
+      *index = i;
+      return f;
+    }
+  }
+  return NULL;
+}
+
 bool IsNumeric(DataType t) { return (t == DT_INT || t == DT_DOUBLE); }
 // Jedina konverze povolena INT -> DOUBLE
 bool isTypeCompatible(DataType t, DataType d) {
@@ -27,7 +49,7 @@ bool isTypeCompatible(DataType t, DataType d) {
   return false;
 }
 
-void ScopePush(SemContext *ctx) {
+void PushScope(SemContext *ctx) {
   Scope *newScope = (Scope *)malloc(sizeof(Scope));
   MallocChecker(newScope);
   newScope->vars = NULL;
@@ -56,7 +78,7 @@ VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
   }
   for (VarSym *v = ctx->curScope->vars; v != NULL; v = v->next) {
     if (strcmp(v->name, name) == 0) {
-      return NULL;
+      return v;
     }
   }
   return NULL;
@@ -86,7 +108,7 @@ void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
   ctx->curScope->vars = v;
 }
 
-FuncSym *FindFunc(SemContext *ctx, const char *name) {
+FuncSym *FindUserFunction(SemContext *ctx, const char *name) {
   for (FuncSym *f = ctx->functions; f != NULL; f = f->next) {
     if (strcmp(f->name, name) == 0) {
       return f;
@@ -97,7 +119,7 @@ FuncSym *FindFunc(SemContext *ctx, const char *name) {
 
 void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
              DataType returnType, bool isAnyParam) {
-  if (FindFunc(ctx, name) != NULL) {
+  if (FindUserFunction(ctx, name) != NULL) {
     ThrowError(ERR_REDEFINED);
   }
   FuncSym *f = (FuncSym *)malloc(sizeof(FuncSym));
@@ -135,7 +157,7 @@ void RegisterBuiltins(SemContext *ctx) {
   AddFunc(ctx, "toStr", NULL, 1, DT_STRING, true);
   AddFunc(ctx, "toInt", p_toInt, 1, DT_INT, false);
   AddFunc(ctx, "strLength", p_strLength, 1, DT_INT, false);
-  AddFunc(ctx, "substr", p_substr, 3, DT_STRING, false);
+  AddFunc(ctx, "subStr", p_substr, 3, DT_STRING, false);
   AddFunc(ctx, "ord", p_ord, 2, DT_INT, false);
   AddFunc(ctx, "chr", p_chr, 1, DT_STRING, false);
 }
@@ -231,12 +253,24 @@ DataType analyzeExpression(SemContext *ctx, Expression *exp) {
     }
   }
   case E_CALL: {
-    FuncSym *f = FindFunc(ctx, exp->data.call.name);
+    FuncSym *f = FindUserFunction(ctx, exp->data.call.name);
     if (f == NULL) {
       ThrowError(ERR_UNDEFINED);
     }
     if (exp->data.call.argc != f->paramCount) {
       ThrowError(ERR_ARGS);
+    }
+    if (f->returnType == DT_NONE) // typ se odvozuje z těla, které ještě nebylo
+                                  // zanalyzováno (volání před definicí)
+    {
+      int idx = 0;
+      FuncDef *def = FindFuncDef(f->name, &idx);
+      if (def != NULL) {
+        if (funcState[idx] == 1) {
+          ThrowError(ERR_TYPE); // rekurze vyžaduje explicitní návratový typ
+        }
+        AnalyzeFunction(ctx, def, idx);
+      }
     }
     for (int i = 0; i < exp->data.call.argc; i++) {
       DataType argType = analyzeExpression(ctx, exp->data.call.args[i]);
@@ -307,13 +341,15 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
     }
     bool thenRet = false;
     bool elseRet = false;
-    ScopePush(ctx);
-    DataType thenType = analyzeBlock(ctx, sta->data.ST_if.then, &thenRet);
+    PushScope(ctx);
+    DataType thenType =
+        AnalyzeBlockTail(ctx, sta->data.ST_if.then, &thenRet, isLastInFunc);
     ScopePop(ctx);
     DataType elseType = DT_UNIT;
     if (sta->data.ST_if.els != NULL) {
-      ScopePush(ctx);
-      elseType = analyzeBlock(ctx, sta->data.ST_if.els, &elseRet);
+      PushScope(ctx);
+      elseType =
+          AnalyzeBlockTail(ctx, sta->data.ST_if.els, &elseRet, isLastInFunc);
       ScopePop(ctx);
     }
     if (thenRet && elseRet) {
@@ -333,12 +369,12 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
     return DT_UNIT;
   }
   case ST_WHILE: {
-    DataType conType = analyzeExpression(ctx, sta->data.ST_if.condition);
+    DataType conType = analyzeExpression(ctx, sta->data.ST_while.condition);
     if (conType != DT_BOOL) {
       ThrowError(ERR_TYPE);
     }
     bool bodyRet = false;
-    ScopePush(ctx);
+    PushScope(ctx);
     analyzeBlock(ctx, sta->data.ST_while.body, &bodyRet);
     ScopePop(ctx);
     return DT_UNIT;
@@ -372,7 +408,11 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
   }
 }
 
-DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns) {
+/// @brief Analýza bloku
+/// @param isFuncTail true = blok je tělo funkce nebo větev if na jejím konci
+/// (pravidlo 3 ze spec platí jen tam), false = třeba tělo while
+static DataType AnalyzeBlockTail(SemContext *ctx, Block *block,
+                                 bool *alwaysReturns, bool isFuncTail) {
   *alwaysReturns = false;
   if (block == NULL || block->first == NULL) {
     return DT_UNIT;
@@ -380,13 +420,72 @@ DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns) {
   DataType lastType = DT_UNIT;
   for (Statement *s = block->first; s != NULL; s = s->next) {
     bool staReturns = false;
-    bool isLast = (s->next == NULL);
+    bool isLast = (s->next == NULL) && isFuncTail;
     lastType = analyzeStatement(ctx, s, &staReturns, isLast);
     if (staReturns) {
       *alwaysReturns = true;
     }
   }
   return lastType;
+}
+
+DataType analyzeBlock(SemContext *ctx, Block *block, bool *alwaysReturns) {
+  return AnalyzeBlockTail(ctx, block, alwaysReturns, false);
+}
+
+/// @brief Zanalyzuje tělo jedné funkce (jen jednou, hotové a rozpracované
+/// přeskočí). Může být zavolaná i uprostřed analýzy jiné funkce, proto si
+/// uloží a na konci vrátí kontext.
+static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
+  if (funcState[idx] != 0) {
+    return;
+  }
+  funcState[idx] = 1;
+
+  Scope *savedScope = ctx->curScope;
+  DataType savedRetType = ctx->curFuncRetType;
+  bool savedExplicitUnit = ctx->curFuncExplicitUnit;
+  bool savedHasReturn = ctx->hasReturn;
+
+  ctx->curScope = NULL; // volaná funkce nesmí vidět proměnné volající
+  ctx->curFuncRetType = f->returnType;
+  ctx->curFuncExplicitUnit = (f->returnType == DT_UNIT);
+  ctx->hasReturn = false;
+  PushScope(ctx);
+
+  for (int i = 0; i < f->paramCount; i++) {
+    if (f->params[i].type == DT_BOOL) {
+      ThrowError(ERR_TYPE);
+    }
+    AddVar(ctx, f->params[i].name, f->params[i].type, false);
+  }
+  bool alwaysReturns = false;
+  DataType bodyType = AnalyzeBlockTail(ctx, f->body, &alwaysReturns, true);
+  // Kontrola navratoveho typu funkce
+  if (f->returnType == DT_NONE) {
+    if (ctx->hasReturn) {
+      ThrowError(ERR_TYPE); // Pri return musi byt navratovy typ explicitni
+    }
+    if (bodyType == DT_BOOL) {
+      ThrowError(ERR_TYPE);
+    }
+    f->returnType = bodyType;
+    FuncSym *fs = FindUserFunction(ctx, f->name);
+    if (fs != NULL) {
+      fs->returnType = bodyType;
+    }
+  } else if (ctx->curFuncExplicitUnit == false) {
+    if (!alwaysReturns && !isTypeCompatible(f->returnType, bodyType)) {
+      ThrowError(ERR_TYPE);
+    }
+  }
+  ScopePop(ctx);
+
+  ctx->curScope = savedScope;
+  ctx->curFuncRetType = savedRetType;
+  ctx->curFuncExplicitUnit = savedExplicitUnit;
+  ctx->hasReturn = savedHasReturn;
+  funcState[idx] = 2;
 }
 
 ErrorCode SemanticAnalysis(FuncDef *program) {
@@ -415,41 +514,22 @@ ErrorCode SemanticAnalysis(FuncDef *program) {
   if (mainCount == 0) {
     ThrowError(ERR_UNDEFINED);
   }
-  // Kontrola tel funkci
+  // Kontrola tel funkci (funkce s odvozeným typem se mohou zanalyzovat dřív,
+  // když je někdo volá, hotové se přeskočí)
+  int funcCount = 0;
   for (FuncDef *f = program; f != NULL; f = f->next) {
-    ctx.curFuncRetType = f->returnType;
-    ctx.curFuncExplicitUnit = (f->returnType == DT_UNIT);
-    ctx.hasReturn = false;
-    ScopePush(&ctx);
-
-    for (int i = 0; i < f->paramCount; i++) {
-      if (f->params[i].type == DT_BOOL) {
-        ThrowError(ERR_TYPE);
-      }
-      AddVar(&ctx, f->params[i].name, f->params[i].type, false);
-    }
-    bool alwaysReturns = false;
-    DataType bodyType = analyzeBlock(&ctx, f->body, &alwaysReturns);
-    // Kontrola navratoveho typu funkce
-    if (f->returnType == DT_NONE) {
-      if (ctx.hasReturn) {
-        ThrowError(ERR_TYPE); // Pri return musi byt navratovy typ explicitni
-      }
-      if (bodyType == DT_BOOL) {
-        ThrowError(ERR_TYPE);
-      }
-      f->returnType = bodyType;
-      FuncSym *fs = FindFunc(&ctx, f->name);
-      if (fs != NULL) {
-        fs->returnType = bodyType;
-      } else if (ctx.curFuncExplicitUnit == false) {
-        if (!alwaysReturns && !isTypeCompatible(f->returnType, bodyType)) {
-          ThrowError(ERR_TYPE);
-        }
-      }
-      ScopePop(&ctx);
-    }
+    funcCount++;
   }
+  programFuncs = program;
+  funcState = calloc(funcCount, sizeof(unsigned char));
+  MallocChecker(funcState);
+  int idx = 0;
+  for (FuncDef *f = program; f != NULL; f = f->next, idx++) {
+    AnalyzeFunction(&ctx, f, idx);
+  }
+  free(funcState);
+  funcState = NULL;
+  programFuncs = NULL;
   FreeFunctions(&ctx);
   return ERR_OK;
 }

@@ -497,8 +497,8 @@ Token TokenGiver() {
           if (c == '\n') {
             lineNumber++;
           }
-
-          if (parenDepth == 0) {
+          if (parenDepth == 0) 
+          {
             lineStart = true;
 
             returnToken.type = T_EOL;
@@ -521,17 +521,23 @@ Token TokenGiver() {
 
     // Tady pokračuje tvoje stávající kontrola '\n', EOF,
     // identifikátorů, čísel atd.
-
     if (c == '\n') // konec řádku
     {
-      returnToken.type = T_EOL;      // vrať konec řádku
-      returnToken.line = lineNumber; // vrať číslo
-      returnToken.val.s = NULL;      // vrať NULL pro value tokenu
+        if (parenDepth > 0)
+        {
+          returnToken.type = T_SKIP;      // vrať konec řádku
+          returnToken.line = lineNumber; // vrať číslo
+          returnToken.val.s = NULL; 
+          return returnToken;
+        }
+        returnToken.type = T_EOL;      // vrať konec řádku
+        returnToken.line = lineNumber; // vrať číslo
+        returnToken.val.s = NULL;      // vrať NULL pro value tokenu
 
-      lineStart = true;
-      lineNumber++;       // přičti řádek
-      free(buffer);       // uvolni alokaci
-      return returnToken; //  token return
+        lineStart = true;
+        lineNumber++;       // přičti řádek
+        free(buffer);       // uvolni alokaci
+        return returnToken; //  token return
     }
     if (c == EOF) // konec souboru
     {
@@ -1011,6 +1017,11 @@ Token TokenGiver() {
 
     if (numState == NUM_INTEGER) {
       returnToken.type = T_INT_LIT;
+      if (length > 1 && buffer[0] == '0') 
+      { 
+        free(buffer); 
+        ThrowError(ERR_LEX); 
+      }
       returnToken.val.i = strtoll(buffer, NULL, 10);
     } else {
       if (length > 0 &&
@@ -1178,7 +1189,7 @@ Token TokenGiver() {
     free(buffer);
     return returnToken;
   }
-  fprintf(stderr, "Nerozpoznany znak: ASCII %d\n", c); // kontrola
+  fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n", c, lineNumber, parenDepth); // kontrola
   free(buffer);
   ThrowError(ERR_LEX);
 

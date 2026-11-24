@@ -1,0 +1,800 @@
+.IFJcode26
+DEFVAR GF@$tmp1
+DEFVAR GF@$tmp2
+DEFVAR GF@$tmp3
+CALL $fn_run
+EXIT int@0
+LABEL $fn_run
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@five$0
+DEFVAR LF@ten$1
+DEFVAR LF@limit$2
+DEFVAR LF@z$3
+DEFVAR LF@sq$4
+DEFVAR LF@tw$5
+DEFVAR LF@ask$6
+DEFVAR LF@f$7
+DEFVAR LF@e$8
+DEFVAR LF@o$9
+DEFVAR LF@s$10
+DEFVAR LF@total$11
+PUSHS int@5
+POPS LF@five$0
+PUSHS int@10
+POPS LF@ten$1
+PUSHS int@50
+POPS LF@limit$2
+CALL $fn_zero
+POPS LF@z$3
+PUSHS LF@five$0
+CALL $fn_square
+POPS LF@sq$4
+PUSHS LF@five$0
+CALL $fn_twice
+POPS LF@tw$5
+CALL $fn_askNumber
+POPS LF@ask$6
+CALL $fn_nop
+POPS GF@$tmp1
+PUSHS string@hello\010
+CALL $fn_greet
+POPS GF@$tmp1
+PUSHS LF@five$0
+CALL $fn_factorial
+POPS LF@f$7
+PUSHS LF@f$7
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS string@\010
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS LF@ten$1
+CALL $fn_isEven
+POPS LF@e$8
+PUSHS LF@ten$1
+CALL $fn_isOdd
+POPS LF@o$9
+PUSHS LF@limit$2
+CALL $fn_firstSquareOver
+POPS LF@s$10
+PUSHS LF@five$0
+CALL $fn_printNonNegative
+POPS GF@$tmp1
+CALL $fn_literals
+POPS GF@$tmp1
+PUSHS LF@five$0
+PUSHS LF@ten$1
+CALL $fn_operators
+POPS GF@$tmp1
+CALL $fn_scopes
+POPS GF@$tmp1
+CALL $fn_builtins
+POPS GF@$tmp1
+PUSHS LF@five$0
+PUSHS LF@ten$1
+PUSHS LF@limit$2
+CALL $fn_add3
+POPS LF@total$11
+PUSHS LF@total$11
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_zero
+CREATEFRAME
+PUSHFRAME
+PUSHS int@0
+POPFRAME
+RETURN
+LABEL $fn_square
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@x$0
+POPS LF@x$0
+PUSHS LF@x$0
+PUSHS LF@x$0
+MULS
+POPFRAME
+RETURN
+LABEL $fn_twice
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@x$0
+POPS LF@x$0
+PUSHS LF@x$0
+PUSHS LF@x$0
+ADDS
+POPFRAME
+RETURN
+LABEL $fn_nop
+CREATEFRAME
+PUSHFRAME
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_askNumber
+CREATEFRAME
+PUSHFRAME
+CALL $builtin_readInt
+POPFRAME
+RETURN
+LABEL $fn_greet
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@name$0
+POPS LF@name$0
+PUSHS LF@name$0
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_add3
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@a$0
+DEFVAR LF@b$1
+DEFVAR LF@c$2
+POPS LF@c$2
+POPS LF@b$1
+POPS LF@a$0
+PUSHS LF@a$0
+PUSHS LF@b$1
+ADDS
+PUSHS LF@c$2
+ADDS
+POPFRAME
+RETURN
+LABEL $fn_factorial
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@n$0
+POPS LF@n$0
+DEFVAR LF@result$1
+DEFVAR LF@i$2
+PUSHS int@1
+POPS LF@result$1
+PUSHS LF@n$0
+POPS LF@i$2
+LABEL $while_start_0
+PUSHS LF@i$2
+PUSHS int@1
+GTS
+PUSHS bool@false
+JUMPIFEQS $while_end_0
+PUSHS LF@result$1
+PUSHS LF@i$2
+MULS
+POPS LF@result$1
+PUSHS LF@i$2
+PUSHS int@1
+SUBS
+POPS LF@i$2
+JUMP $while_start_0
+LABEL $while_end_0
+PUSHS LF@result$1
+POPFRAME
+RETURN
+LABEL $fn_isEven
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@n$0
+POPS LF@n$0
+DEFVAR LF@m$1
+PUSHS LF@n$0
+PUSHS int@0
+EQS
+PUSHS bool@false
+JUMPIFEQS $if_else_1
+PUSHS int@1
+POPFRAME
+RETURN
+JUMP $if_end_1
+LABEL $if_else_1
+PUSHS LF@n$0
+PUSHS int@1
+SUBS
+POPS LF@m$1
+PUSHS LF@m$1
+CALL $fn_isOdd
+POPFRAME
+RETURN
+LABEL $if_end_1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_isOdd
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@n$0
+POPS LF@n$0
+DEFVAR LF@m$1
+PUSHS LF@n$0
+PUSHS int@0
+EQS
+PUSHS bool@false
+JUMPIFEQS $if_else_2
+PUSHS int@0
+POPFRAME
+RETURN
+JUMP $if_end_2
+LABEL $if_else_2
+PUSHS LF@n$0
+PUSHS int@1
+SUBS
+POPS LF@m$1
+PUSHS LF@m$1
+CALL $fn_isEven
+POPFRAME
+RETURN
+LABEL $if_end_2
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_firstSquareOver
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@limit$0
+POPS LF@limit$0
+DEFVAR LF@i$1
+PUSHS int@0
+POPS LF@i$1
+LABEL $while_start_3
+PUSHS LF@i$1
+PUSHS int@100
+LTS
+PUSHS bool@false
+JUMPIFEQS $while_end_3
+PUSHS LF@i$1
+PUSHS LF@i$1
+MULS
+PUSHS LF@limit$0
+GTS
+PUSHS bool@false
+JUMPIFEQS $if_else_4
+PUSHS LF@i$1
+POPFRAME
+RETURN
+JUMP $if_end_4
+LABEL $if_else_4
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_4
+PUSHS LF@i$1
+PUSHS int@1
+ADDS
+POPS LF@i$1
+JUMP $while_start_3
+LABEL $while_end_3
+PUSHS int@1
+PUSHS int@-1
+MULS
+POPFRAME
+RETURN
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_printNonNegative
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@x$0
+POPS LF@x$0
+PUSHS LF@x$0
+PUSHS int@0
+LTS
+PUSHS bool@false
+JUMPIFEQS $if_else_5
+PUSHS nil@nil
+POPFRAME
+RETURN
+JUMP $if_end_5
+LABEL $if_else_5
+PUSHS LF@x$0
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_5
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_literals
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@big$0
+DEFVAR LF@zeroLit$1
+DEFVAR LF@pi$2
+DEFVAR LF@half$3
+DEFVAR LF@kilo$4
+DEFVAR LF@tiny$5
+DEFVAR LF@suffixed$6
+DEFVAR LF@u$7
+DEFVAR LF@esc$8
+DEFVAR LF@ml$9
+DEFVAR LF@s1$10
+DEFVAR LF@s2$11
+DEFVAR LF@both$12
+PUSHS int@1000000
+POPS LF@big$0
+PUSHS int@0
+POPS LF@zeroLit$1
+PUSHS float@0x1.91eb851eb851fp+1
+POPS LF@pi$2
+PUSHS float@0x1p-1
+POPS LF@half$3
+PUSHS float@0x1.f4p+10
+POPS LF@kilo$4
+PUSHS float@0x1.eb851eb851eb8p-7
+POPS LF@tiny$5
+PUSHS float@0x1p+2
+POPS LF@suffixed$6
+PUSHS nil@nil
+POPS LF@u$7
+PUSHS string@tab\009\032quote"\032backslash\092\032cr\013\032newline\010
+POPS LF@esc$8
+PUSHS string@first\032line\010\032\032\032\032second\032line,\032\092n\032is\032not\032an\032escape\032here\010\032\032\032\032
+POPS LF@ml$9
+PUSHS string@apple
+POPS LF@s1$10
+PUSHS string@banana
+POPS LF@s2$11
+PUSHS LF@s1$10
+PUSHS string@\032and\032
+POPS GF@$tmp2
+POPS GF@$tmp1
+CONCAT GF@$tmp3 GF@$tmp1 GF@$tmp2
+PUSHS GF@$tmp3
+PUSHS LF@s2$11
+POPS GF@$tmp2
+POPS GF@$tmp1
+CONCAT GF@$tmp3 GF@$tmp1 GF@$tmp2
+PUSHS GF@$tmp3
+POPS LF@both$12
+PUSHS LF@s1$10
+PUSHS LF@s2$11
+LTS
+PUSHS bool@false
+JUMPIFEQS $if_else_6
+PUSHS LF@both$12
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_6
+LABEL $if_else_6
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_6
+PUSHS LF@u$7
+POPS GF@$tmp1
+WRITE string@()
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_operators
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@a$0
+DEFVAR LF@b$1
+POPS LF@b$1
+POPS LF@a$0
+DEFVAR LF@sum$2
+DEFVAR LF@neg$3
+DEFVAR LF@negneg$4
+DEFVAR LF@prod$5
+DEFVAR LF@mixed$6
+DEFVAR LF@widened$7
+DEFVAR LF@fraction$8
+DEFVAR LF@withComment$9
+DEFVAR LF@multi$10
+PUSHS LF@a$0
+PUSHS LF@b$1
+PUSHS int@2
+MULS
+ADDS
+PUSHS LF@a$0
+PUSHS LF@b$1
+SUBS
+PUSHS int@3
+IDIVS
+SUBS
+POPS LF@sum$2
+PUSHS LF@a$0
+PUSHS int@-1
+MULS
+POPS LF@neg$3
+PUSHS LF@b$1
+PUSHS int@-1
+MULS
+PUSHS int@-1
+MULS
+POPS LF@negneg$4
+PUSHS LF@a$0
+PUSHS LF@b$1
+PUSHS int@-1
+MULS
+MULS
+POPS LF@prod$5
+PUSHS LF@a$0
+INT2FLOATS
+PUSHS float@0x1.4p+1
+MULS
+POPS LF@mixed$6
+PUSHS LF@a$0
+INT2FLOATS
+POPS LF@widened$7
+PUSHS int@7
+INT2FLOATS
+PUSHS float@0x1p+1
+DIVS
+POPS LF@fraction$8
+PUSHS LF@a$0
+PUSHS LF@b$1
+ADDS
+POPS LF@withComment$9
+PUSHS LF@a$0
+PUSHS LF@b$1
+ADDS
+PUSHS int@10
+ADDS
+POPS LF@multi$10
+PUSHS LF@a$0
+PUSHS LF@b$1
+ADDS
+POPS GF@$tmp1
+PUSHS LF@a$0
+PUSHS LF@b$1
+LTS
+PUSHS bool@false
+JUMPIFEQS $if_else_7
+PUSHS string@<
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_7
+LABEL $if_else_7
+PUSHS LF@a$0
+PUSHS LF@b$1
+GTS
+PUSHS bool@false
+JUMPIFEQS $if_else_8
+PUSHS string@>
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_8
+LABEL $if_else_8
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_8
+LABEL $if_end_7
+PUSHS LF@a$0
+PUSHS LF@b$1
+GTS
+NOTS
+PUSHS bool@false
+JUMPIFEQS $if_else_9
+PUSHS string@<=
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_9
+LABEL $if_else_9
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_9
+PUSHS LF@a$0
+PUSHS LF@b$1
+LTS
+NOTS
+PUSHS bool@false
+JUMPIFEQS $if_else_10
+PUSHS string@>=
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_10
+LABEL $if_else_10
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_10
+PUSHS LF@a$0
+PUSHS LF@b$1
+EQS
+PUSHS bool@false
+JUMPIFEQS $if_else_11
+PUSHS string@==
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_11
+LABEL $if_else_11
+PUSHS LF@a$0
+PUSHS LF@b$1
+EQS
+NOTS
+PUSHS bool@false
+JUMPIFEQS $if_else_12
+PUSHS string@!=
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_12
+LABEL $if_else_12
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_12
+LABEL $if_end_11
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_scopes
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@counter$0
+DEFVAR LF@limit$1
+DEFVAR LF@d$2
+DEFVAR LF@a$3
+DEFVAR LF@b$4
+DEFVAR LF@inner$5
+DEFVAR LF@x$6
+DEFVAR LF@x$7
+PUSHS int@0
+POPS LF@counter$0
+PUSHS int@3
+POPS LF@limit$1
+PUSHS int@3
+INT2FLOATS
+POPS LF@d$2
+PUSHS LF@d$2
+PUSHS int@2
+INT2FLOATS
+MULS
+POPS LF@d$2
+PUSHS int@1
+POPS LF@a$3
+PUSHS int@2
+POPS LF@b$4
+PUSHS LF@a$3
+PUSHS LF@b$4
+ADDS
+POPS LF@a$3
+LABEL $while_start_13
+PUSHS LF@counter$0
+PUSHS LF@limit$1
+LTS
+PUSHS bool@false
+JUMPIFEQS $while_end_13
+PUSHS LF@counter$0
+PUSHS int@2
+MULS
+POPS LF@inner$5
+PUSHS LF@counter$0
+PUSHS int@1
+ADDS
+POPS LF@counter$0
+JUMP $while_start_13
+LABEL $while_end_13
+PUSHS int@1
+POPS LF@x$6
+PUSHS LF@x$6
+PUSHS int@5
+LTS
+PUSHS bool@false
+JUMPIFEQS $if_else_14
+PUSHS string@shadowed
+POPS LF@x$7
+PUSHS LF@x$7
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+JUMP $if_end_14
+LABEL $if_else_14
+PUSHS nil@nil
+POPS GF@$tmp1
+LABEL $if_end_14
+PUSHS LF@x$6
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS LF@limit$1
+CALL $fn_factorial
+POPS LF@counter$0
+PUSHS LF@limit$1
+CALL $fn_factorial
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $fn_builtins
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@line$0
+DEFVAR LF@n$1
+DEFVAR LF@real$2
+DEFVAR LF@s$3
+DEFVAR LF@r$4
+DEFVAR LF@t$5
+DEFVAR LF@len$6
+DEFVAR LF@text$7
+DEFVAR LF@start$8
+DEFVAR LF@stop$9
+DEFVAR LF@part$10
+DEFVAR LF@code$11
+DEFVAR LF@ch$12
+CALL $builtin_readLine
+POPS LF@line$0
+CALL $builtin_readInt
+POPS LF@n$1
+CALL $builtin_readDouble
+POPS LF@real$2
+PUSHS LF@n$1
+INT2STRS
+POPS LF@s$3
+PUSHS LF@real$2
+FLOAT2STRS
+POPS LF@r$4
+PUSHS LF@real$2
+FLOAT2INTS
+POPS LF@t$5
+PUSHS LF@line$0
+POPS GF@$tmp1
+STRLEN GF@$tmp1 GF@$tmp1
+PUSHS GF@$tmp1
+POPS LF@len$6
+PUSHS string@hello\032world
+POPS LF@text$7
+PUSHS int@0
+POPS LF@start$8
+PUSHS int@5
+POPS LF@stop$9
+PUSHS LF@text$7
+PUSHS LF@start$8
+PUSHS LF@stop$9
+CALL $builtin_subStr
+POPS LF@part$10
+PUSHS LF@part$10
+PUSHS LF@start$8
+CALL $builtin_ord
+POPS LF@code$11
+PUSHS int@65
+INT2CHARS
+POPS LF@ch$12
+PUSHS LF@s$3
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS LF@part$10
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS LF@code$11
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS LF@ch$12
+POPS GF@$tmp1
+WRITE GF@$tmp1
+PUSHS nil@nil
+POPS GF@$tmp1
+PUSHS nil@nil
+POPFRAME
+RETURN
+LABEL $builtin_readLine
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@res
+READ LF@res string
+JUMPIFNEQ $builtin_readLine_ok LF@res nil@nil
+MOVE LF@res string@
+LABEL $builtin_readLine_ok
+PUSHS LF@res
+POPFRAME
+RETURN
+LABEL $builtin_readInt
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@res
+READ LF@res int
+JUMPIFNEQ $builtin_readInt_ok LF@res nil@nil
+MOVE LF@res int@0
+LABEL $builtin_readInt_ok
+PUSHS LF@res
+POPFRAME
+RETURN
+LABEL $builtin_readDouble
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@res
+READ LF@res float
+JUMPIFNEQ $builtin_readDouble_ok LF@res nil@nil
+MOVE LF@res float@0x0p+0
+LABEL $builtin_readDouble_ok
+PUSHS LF@res
+POPFRAME
+RETURN
+LABEL $builtin_ord
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@value
+DEFVAR LF@index
+DEFVAR LF@len
+DEFVAR LF@cond
+DEFVAR LF@res
+POPS LF@index
+POPS LF@value
+STRLEN LF@len LF@value
+LT LF@cond LF@index int@0
+JUMPIFEQ $builtin_ord_bad LF@cond bool@true
+LT LF@cond LF@index LF@len
+JUMPIFEQ $builtin_ord_bad LF@cond bool@false
+STRI2INT LF@res LF@value LF@index
+JUMP $builtin_ord_end
+LABEL $builtin_ord_bad
+MOVE LF@res int@-1
+LABEL $builtin_ord_end
+PUSHS LF@res
+POPFRAME
+RETURN
+LABEL $builtin_subStr
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@value
+DEFVAR LF@start
+DEFVAR LF@end
+DEFVAR LF@len
+DEFVAR LF@cond
+DEFVAR LF@ch
+DEFVAR LF@res
+POPS LF@end
+POPS LF@start
+POPS LF@value
+STRLEN LF@len LF@value
+LT LF@cond LF@start int@0
+JUMPIFEQ $builtin_subStr_err LF@cond bool@true
+LT LF@cond LF@end int@0
+JUMPIFEQ $builtin_subStr_err LF@cond bool@true
+GT LF@cond LF@start LF@end
+JUMPIFEQ $builtin_subStr_err LF@cond bool@true
+LT LF@cond LF@start LF@len
+JUMPIFEQ $builtin_subStr_err LF@cond bool@false
+GT LF@cond LF@end LF@len
+JUMPIFEQ $builtin_subStr_err LF@cond bool@true
+MOVE LF@res string@
+LABEL $builtin_subStr_loop
+JUMPIFEQ $builtin_subStr_done LF@start LF@end
+GETCHAR LF@ch LF@value LF@start
+CONCAT LF@res LF@res LF@ch
+ADD LF@start LF@start int@1
+JUMP $builtin_subStr_loop
+LABEL $builtin_subStr_done
+PUSHS LF@res
+POPFRAME
+RETURN
+LABEL $builtin_subStr_err
+EXIT int@40

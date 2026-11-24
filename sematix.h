@@ -55,12 +55,12 @@ typedef struct {
 ErrorCode SemanticAnalysis(FuncDef *program);
 bool IsNumeric(DataType t);
 bool isTypeCompatible(DataType t, DataType d);
-void ScopePush(SemContext *ctx);
+void PushScope(SemContext *ctx);
 void ScopePop(SemContext *ctx);
 VarSym *FindVarInCurScope(SemContext *ctx, const char *name);
 VarSym *FindVar(SemContext *ctx, const char *name);
 void AddVar(SemContext *ctx, char *name, DataType type, bool isVar);
-FuncSym *FindFunc(SemContext *ctx, const char *name);
+FuncSym *FindUserFunction(SemContext *ctx, const char *name);
 void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
              DataType returnType, bool isAnyParam);
 void FreeFunctions(SemContext *ctx);
