@@ -1136,6 +1136,7 @@ Token TokenGiver()
 #pragma endregion
     // Znak, který už nepatří do čísla, vrátíme.
     if (c != EOF && ungetc(c, mainFile) == EOF)
+    {
       free(buffer);
       ThrowError(ERR_INTERNAL);
     }
@@ -1157,6 +1158,7 @@ Token TokenGiver()
     returnToken.line = lineNumber;
 
     if (numState == NUM_INTEGER)
+    {
       returnToken.type = T_INT_LIT;
       if (length > 1 && buffer[0] == '0')
       {
@@ -1168,6 +1170,7 @@ Token TokenGiver()
     else
     {
       if (length > 0 &&
+          (buffer[length - 1] == 'd' || buffer[length - 1] == 'D'))
       {
         length--;
         buffer[length] = '\0';
@@ -1194,6 +1197,7 @@ Token TokenGiver()
       switch (state)
       {
       case STATE_START:
+        switch (c)
         {
         case '=':
           state = STATE_EQ;
@@ -1291,6 +1295,7 @@ Token TokenGiver()
           ThrowError(ERR_INTERNAL);
         }
 
+        if (c == '=')
         {
           if (state == STATE_EQ)
             state = STATE_EQEQ;
@@ -1303,6 +1308,7 @@ Token TokenGiver()
         }
         // Znak už nepatří do operátoru, vrátíme ho.
         if (c != EOF && ungetc(c, mainFile) == EOF)
+        {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
