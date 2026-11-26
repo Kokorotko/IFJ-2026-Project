@@ -14,7 +14,6 @@ void ThrowError(ErrorCode errorCode) { exit(errorCode); }
 
 void MallocChecker(void *pointer) {
   if (pointer == NULL) {
-    free(pointer);
     ThrowError(ERR_INTERNAL);
   }
 }

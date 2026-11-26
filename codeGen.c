@@ -343,7 +343,7 @@ void GenReturn(Expression *value) {
 /// @brief Pre-pass: DEFVAR všech lokálních proměnných funkce (včetně vnořených
 /// bloků)  !musí procházet ve STEJNÉM pořadí jako GenStatement (then -> else,
 /// body),
-void HoistVars(Block *b) {
+void VarPreparation(Block *b) {
   MallocChecker(b);
   Statement *s = b->first;
   while (s != NULL) {
@@ -352,13 +352,13 @@ void HoistVars(Block *b) {
       Emit("DEFVAR LF@%s$%d", s->data.ST_vardef.name, varCounter++);
       break;
     case ST_IF:
-      HoistVars(s->data.ST_if.then);
+      VarPreparation(s->data.ST_if.then);
       if (s->data.ST_if.els != NULL) { // if bez else BOOLTHEN
-        HoistVars(s->data.ST_if.els);
+        VarPreparation(s->data.ST_if.els);
       }
       break;
     case ST_WHILE:
-      HoistVars(s->data.ST_while.body);
+      VarPreparation(s->data.ST_while.body);
       break;
     default:
       break;
@@ -375,7 +375,7 @@ void GenStatement(Statement *s) {
   case ST_VARDEF: {
     Expression *init = s->data.ST_vardef.init;
     DataType type = s->data.ST_vardef.type;
-    int id = varCounter++; // musí sedět s HoistVars
+    int id = varCounter++; // musí sedět s VarPreparation
 
     GenExpr(init);
     ConvertTop(init->resultType, type);
@@ -471,7 +471,7 @@ void GenFunction(FuncDef *f) {
   // DEFVAR všech lokálních proměnných, pak se počítadlo vrátí, aby GenStatement
   // dostal stejná id
   varCounter = f->paramCount;
-  HoistVars(f->body);
+  VarPreparation(f->body);
   varCounter = f->paramCount;
 
   // tělo: poslední příkaz zapsaný přímo v bloku, pokud je to výraz, je
@@ -489,7 +489,7 @@ void GenFunction(FuncDef *f) {
 
   GenReturn(lastExpr != NULL ? lastExpr->data.expression : NULL);
 
-  RemoveScope(NULL); // úklid scopu (parametry + zbytek)
+  RemoveScope(NULL); // úklid scopu
 }
 
 /// @brief Vygeneruje builtin pro čtení: nil (EOF / chybný formát) -> výchozí
@@ -513,8 +513,7 @@ void GenReadBuiltin(const char *name, const char *type, const char *fallback) {
 }
 
 /// @brief Vestavěné funkce, které potřebují smyčku / ošetření chyb -> vlastní
-/// funkce v IFJcode26 Stejná konvence jako u uživatelských: argumenty na
-/// zásobníku zleva doprava, výsledek taky na zásobníku
+/// funkce v IFJcode26 Stejná konvence jako u uživatelských
 void GenBuiltins(void) {
   GenReadBuiltin("readLine", "string", "string@");
   GenReadBuiltin("readInt", "int", "int@0");
@@ -584,10 +583,10 @@ void GenBuiltins(void) {
   Emit("EXIT int@40");
 }
 
-/// @brief Vstupní bod generátoru: vygeneruje celý program v IFJcode26
+/// @brief Vygeneruje celý program v IFJcode26
 /// @param program AST po sémantické analýze
 /// @param output Kam se kód zapisuje (stdout)
-/// @return ERR_OK (0) nebo kód chyby (ERR_INTERNAL)
+/// @return Error kod
 int GenProgram(FuncDef *innerProgram, FILE *output) {
   out = output;
   program = innerProgram;

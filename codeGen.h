@@ -28,7 +28,7 @@ void GenBinaryOp(Expression *e);
 void GenStatement(Statement *s);
 void GenBlock(Block *b);
 void GenReturn(Expression *value);
-void HoistVars(Block *b);
+void VarPreparation(Block *b);
 void GenFunction(FuncDef *f);
 void GenReadBuiltin(const char *name, const char *type, const char *fallback);
 void GenBuiltins(void);
