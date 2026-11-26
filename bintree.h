@@ -33,8 +33,8 @@ typedef enum {
 
 // Rekurzivně (přes Post-Order) uvolňuje alokovanou paměť stromu, uvolní paměť
 // pro key a Tree_Node, ale pro data potřebuje ukazatel na funkci, která uvolní
-// samotné data vložená do uzlu
-void DestroyTree(Tree_Node *root, FreeDataFnc free_data);
+// samotné data vložená do uzlu. Vrací 1 při úspěchu nebo -1 při chybě.
+int DestroyTree(Tree_Node *root, FreeDataFnc free_data);
 // Vložení nového uzlu do stromu s daným klíčem, pokud dojde ke shodě, přepíše
 // se stav TreeStatus na Tree_DUPLICATE a data se nepřepisují
 Tree_Node *InsertNode(Tree_Node *root, void *data, const char *newnode_key,

@@ -93,10 +93,14 @@ static Tree_Node *CreateNode(const char *key, void *data) {
   return node;
 }
 
-void DestroyTree(Tree_Node *root, FreeDataFnc free_data) {
+int DestroyTree(Tree_Node *root, FreeDataFnc free_data) {
   if (root == NULL) {
-    return;
+    return 1;
   }
+  if(free_data == NULL){
+    return -1;
+  }
+
   DestroyTree(root->left, free_data);
   DestroyTree(root->right, free_data);
 
@@ -105,6 +109,7 @@ void DestroyTree(Tree_Node *root, FreeDataFnc free_data) {
   }
   free(root->key);
   free(root);
+  return 1;
 }
 
 Tree_Node *InsertNode(Tree_Node *node, void *data, const char *key,
