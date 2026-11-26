@@ -19,7 +19,7 @@ static FuncDef *currentFunction = NULL; // funkce, kterou zrovna generujeme
 static int labelCounter = 0;            // cislovani pro if/while
 static int genError = 0;                // errorHandling
 
-// Claude, udělej mi printf ale do souboru (nakonec to je do stdout)
+// AI: Claude, udělej mi printf ale do souboru (nakonec to je do stdout)
 /// @brief printf pro jednu instrukci, přidá odsazení řádku
 void Emit(const char *message, ...) {
   va_list args; // list dalších argumentů
@@ -157,7 +157,7 @@ void GenBinaryOp(Expression *e) {
   switch (e->operation) {
   case T_PLUS:
     if (isString) {
-      // CONCAT nemá zásobníkovou verzi
+      // CONCAT nemá zásobníkovou verzi :(
       Emit("POPS GF@$tmp2");
       Emit("POPS GF@$tmp1");
       Emit("CONCAT GF@$tmp3 GF@$tmp1 GF@$tmp2");
