@@ -3,7 +3,6 @@ Outputs: stdout
 Každý dostane vlastní větev, jednou za čas se budou dělat alpha verze
 Každý kod který je pushnut by měl být kompilovatelný
 Kontrolovat memory leaks (Valgrind na Linux)
-Každá metoda bude mít popis podle standardu Doxygen
 
 Na začátek každého bonus .txt souboru
 //IFJ-2026-Překladač
@@ -11,4 +10,3 @@ Na začátek každého bonus .txt souboru
 //xhrusko00 - Ondřej Hruška
 //xkonvim00 - Martin Konvička
 //xklimat00 - Tomáš Klíma
-
