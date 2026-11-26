@@ -1,4 +1,4 @@
-import ifj26.*
+import      ifj26.*
 def factorial(n: Int): Int =
 var result = 1
 var i: Int = n // uvedení typu je nepovinné
@@ -17,6 +17,10 @@ void function(
 )
 /*
 kment
+
+
+
+
 */
 """
 slova

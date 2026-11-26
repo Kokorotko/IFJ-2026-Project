@@ -82,7 +82,7 @@ typedef enum
 
 } NumberState;                  // čísloce
 static bool lineStart = true;   // proměnná pro odsazení (indent)
-static int nextChar = EOF;      //
+static int nextChar = EOF;      // proměnná pro následující znak
 static int indent = 0;          // úroveň odsazení
 static int *indentStack = NULL; // ukazatel na pole indent
 static int parenDepth = 0;      // pro to jestli se vraco
@@ -231,7 +231,7 @@ TryComment(FILE *file,
       do
       {
         c = fgetc(file);
-      } while (c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f');
+      } while (c == ' ' || c == '\t' || c == '\r'); // přeskakujeme odsazení
 
       if (c == EOF)
       {
@@ -277,13 +277,13 @@ TryComment(FILE *file,
   return false;
 }
 
-static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není bílý
-{                                         // znak ani součást komentáře.
-  int c = fgetc(mainFile);                // bereme znak
+static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není bílý znak ani součást komentáře.
+{
+  int c = fgetc(mainFile); // bereme znak
 
   while (true)
   {
-    while (c == ' ' || c == '\t' || c == '\r' || c == '\f' || c == '\n')
+    while (c == ' ' || c == '\t' || c == '\r' || c == '\n')
     {
       if (c == '\n') // konec řádku, počet řádku +1
       {
@@ -535,7 +535,7 @@ Token TokenGiver() // thsi shti...
 
         int commentNewlines = 0;
 
-        if (c != '/' || !TryComment(mainFile, &commentNewlines)) // rozhodnutí mezt
+        if (c != '/' || !TryComment(mainFile, &commentNewlines))
         {
           break;
         }
@@ -582,9 +582,9 @@ Token TokenGiver() // thsi shti...
     {
       if (parenDepth > 0)
       {
-        returnToken.type = T_SKIP;     // vrať konec řádku
-        returnToken.line = lineNumber; // vrať číslo
-        returnToken.val.s = NULL;
+        returnToken.type = T_SKIP;     // vrať skip, přeskakuje konec řádku
+        returnToken.line = lineNumber; // vrať číslo řádku
+        returnToken.val.s = NULL;      // bez honoty
         return returnToken;
       }
       returnToken.type = T_EOL;      // vrať konec řádku
@@ -1352,8 +1352,8 @@ Token TokenGiver() // thsi shti...
     return returnToken;
   }
   // ověření
-  fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n", c,
-          lineNumber, parenDepth); // kontrola
+  // fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n", c,
+  //         lineNumber, parenDepth); // kontrola
   free(buffer);
   ThrowError(ERR_LEX);
 
