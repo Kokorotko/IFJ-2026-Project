@@ -12,22 +12,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bst.h"
 #include "codeStruct.h"
 #include "structure.h"
-#include "bst.h"
 
 #ifndef SEMATIX // Nedefinuj soubor znova, pokud uz je definovan
 #define SEMATIX
 
 typedef struct VarSym {
   char *name;
-  int id; //číslování pro codeGen
+  int id; // číslování pro codeGen
   DataType type;
   bool isVar; // Bude true kdyz je variable bude false kdyz value nebo parametr
 } VarSym;
 
 typedef struct Scope {
-  Tree_Node *vars;        // Seznam promennych v bloku
+  Tree_Node *vars;      // Seznam promennych v bloku
   struct Scope *parent; // Ukazatel na nadrazeny blok treba z if do funkce
 } Scope;
 
@@ -40,9 +40,9 @@ typedef struct FuncSym {
 } FuncSym;
 
 typedef struct {
-  Tree_Node *functions;       // Vsechny funkce programu
-  Scope *curScope;          // Aktualni blok
-  DataType curFuncRetType;  // Vracejici typ funkce kterou aktualne kontrolujeme
+  Tree_Node *functions;    // Vsechny funkce programu
+  Scope *curScope;         // Aktualni blok
+  DataType curFuncRetType; // Vracejici typ funkce kterou aktualne kontrolujeme
   int nextVarId;
   bool curFuncExplicitUnit; // Ma aktualni funkce v hlavicce napsano ": Unit"?
   bool hasReturn;           // Ma funkce v sobe return?

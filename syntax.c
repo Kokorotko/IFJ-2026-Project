@@ -35,20 +35,21 @@ static int currentIndendationLevel = 0; // global počet odsazení
 #define TABLE_MAX_RULE_SIZE 3
 
 /// @brief LL Tabulka
-// AI: Vygeneruj mi 2D tabulku v C podle téhle SA tabulky (*SA tabulka z dokumentace)
+// AI: Vygeneruj mi 2D tabulku v C podle téhle SA tabulky (*SA tabulka z
+// dokumentace)
 static const char p_Table[P_TABLE_SIZE][P_TABLE_SIZE] = {
     //       -u  */  +-  rel eq &&  || (   )   i   $
-    /* u   */ {S,R,R,R,R,R,R,S,R,S,R},
-    /* //  */ {S,R,R,R,R,R,R,S,R,S,R},
-    /* +-  */ {S,S,R,R,R,R,R,S,R,S,R},
-    /* rel */ {S,S,S,X,R,R,R,S,R,S,R},
-    /* eq  */ {S,S,S,S,X,R,R,S,R,S,R},
-    /* &&  */ {S,S,S,S,S,R,R,S,R,S,R},
-    /* ||  */ {S,S,S,S,S,S,R,S,R,S,R},
-    /* (   */ {S,S,S,S,S,S,S,S,E,S,X},
-    /* )   */ {X,R,R,R,R,R,R,X,R,X,R},
-    /* i   */ {X,R,R,R,R,R,R,X,R,X,R},
-    /* $   */ {S,S,S,S,S,S,S,S,X,S,F},
+    /* u   */ {S, R, R, R, R, R, R, S, R, S, R},
+    /* //  */ {S, R, R, R, R, R, R, S, R, S, R},
+    /* +-  */ {S, S, R, R, R, R, R, S, R, S, R},
+    /* rel */ {S, S, S, X, R, R, R, S, R, S, R},
+    /* eq  */ {S, S, S, S, X, R, R, S, R, S, R},
+    /* &&  */ {S, S, S, S, S, R, R, S, R, S, R},
+    /* ||  */ {S, S, S, S, S, S, R, S, R, S, R},
+    /* (   */ {S, S, S, S, S, S, S, S, E, S, X},
+    /* )   */ {X, R, R, R, R, R, R, X, R, X, R},
+    /* i   */ {X, R, R, R, R, R, R, X, R, X, R},
+    /* $   */ {S, S, S, S, S, S, S, S, X, S, F},
     // S == Shift, R == Reduce, E == Equals, X == Unreachable syntax, F ==
     // Finito
 };
@@ -64,9 +65,9 @@ static bool imported = false;    // Jestli přišel token KW_IMPORT
 /// si ten token)
 void Next() {
   if (tokenPeaked) // další token je v nextToken
-  {    
+  {
     token = nextToken;
-    tokenPeaked = false; //proti zacyklinenim
+    tokenPeaked = false; // proti zacyklinenim
     switch (token.type) {
     case T_SKIP:
       Next();
@@ -74,7 +75,7 @@ void Next() {
       break;
     default:
       break;
-    }    
+    }
   } else // Token z Lexoru
   {
     token = TokenGiver();
@@ -100,8 +101,8 @@ void Peek() {
   if (!tokenPeaked) // Peek může vidět pouze 1 token dopředu
   {
     tokenPeaked = true;
-    do { 
-      nextToken = TokenGiver(); 
+    do {
+      nextToken = TokenGiver();
     } while (nextToken.type == T_SKIP);
     if (imported &&
         nextToken.type ==
@@ -137,8 +138,7 @@ DataType ExpectDataType() {
     Expect(KW_STRING);
     return DT_STRING;
   }
-  case KW_BOOL:
-  {
+  case KW_BOOL: {
     Expect(KW_BOOL);
     return DT_BOOL;
   }
@@ -167,10 +167,9 @@ Statement *ParseIf() {
   Expect(KW_THEN);
   ExpectEndOfLine();
   s->data.ST_if.then = ParseBlock(indendation);
-  if (token.type == KW_ELSE && currentIndendationLevel == indendation) 
-  {
+  if (token.type == KW_ELSE && currentIndendationLevel == indendation) {
     Expect(KW_ELSE);
-    if (token.type == KW_IF) {  // else if => else { if ... }
+    if (token.type == KW_IF) { // else if => else { if ... }
       Block *b = NewBlock();
       BlockAppend(b, ParseIf());
       s->data.ST_if.els = b;
@@ -178,7 +177,7 @@ Statement *ParseIf() {
       ExpectEndOfLine();
       s->data.ST_if.els = ParseBlock(indendation);
     }
-  } 
+  }
   return s;
 }
 
@@ -279,10 +278,10 @@ Expression *ParseExpressionOrCall() {
     return ParseExpression();
   } else if (token.type == T_DOUBLE_LIT || token.type == T_INT_LIT ||
              token.type == T_STRING_LIT || token.type == T_LPAREN ||
-             token.type == T_MINUS|| token.type == KW_TRUE || token.type == KW_FALSE || token.type == T_NOT) {
+             token.type == T_MINUS || token.type == KW_TRUE ||
+             token.type == KW_FALSE || token.type == T_NOT) {
     return ParseExpression();
-  } else
-  {
+  } else {
     ErrorHandlingSyntax(ERR_SYNTAX, token);
   }
   return NULL;
@@ -339,8 +338,7 @@ FuncDef *ParseDefFunction() {
   case T_MINUS: // foo() = výraz-nebo-volání
   case KW_TRUE:
   case KW_FALSE:
-  case T_NOT:
-  {
+  case T_NOT: {
     Statement *s = NewStatement(ST_EXPR);
     s->data.expression = ParseExpressionOrCall();
     fd->body = NewBlock(); // block je 1 řádek
@@ -409,14 +407,15 @@ Expression *ParseExpression() {
         item.token.type = P_UMINUS; // Zaměnit za unární mínus
       }
 
-      //FUNEXP addon
+      // FUNEXP addon
       bool isCall = false;
       int savedParenDepth = parenDepth;
       if (token.type == T_ID) {
         Peek();
         if (nextToken.type == T_LPAREN) {
           isCall = true;
-          item.e = ParseCall(); // sežere ID(*sum*) a rekurzivně zavolá ParseExpression
+          item.e = ParseCall(); // sežere ID(*sum*) a rekurzivně zavolá
+                                // ParseExpression
         }
       }
 
@@ -429,14 +428,13 @@ Expression *ParseExpression() {
         StackPush(stack, itemMiddleToken); //<
       }
       StackPush(stack, item); // Token
-      if (isCall) //FUNEXP addon
-      { 
-        previousWasOperand = true; 
-        parenDepth = savedParenDepth; 
-      }
-      else  
-      { 
-        UpdateState(token.type); Next(); 
+      if (isCall)             // FUNEXP addon
+      {
+        previousWasOperand = true;
+        parenDepth = savedParenDepth;
+      } else {
+        UpdateState(token.type);
+        Next();
       }
       free(top);
       break;
@@ -473,7 +471,7 @@ Expression *ParseExpression() {
     }
     case E: // Push without <
     {
-      StackItem itemToken = {0}; //null pro vsechny hodnoty
+      StackItem itemToken = {0}; // null pro vsechny hodnoty
       itemToken.token = token;
       StackPush(stack, itemToken); // push el Token
       UpdateState(token.type);
@@ -527,8 +525,9 @@ Expression *ParseExpression() {
 /// @param tokType Typ tokenu
 void UpdateState(TokType tokType) {
   previousWasOperand =
-      (tokType == T_INT_LIT || tokType == T_DOUBLE_LIT || tokType == T_STRING_LIT ||
-       tokType == T_ID || tokType == T_RPAREN || tokType == KW_TRUE || tokType == KW_FALSE);
+      (tokType == T_INT_LIT || tokType == T_DOUBLE_LIT ||
+       tokType == T_STRING_LIT || tokType == T_ID || tokType == T_RPAREN ||
+       tokType == KW_TRUE || tokType == KW_FALSE);
   if (tokType == T_LPAREN)
     parenDepth++;
   else if (tokType == T_RPAREN)
@@ -540,7 +539,7 @@ Expression *ExpressionTransform(StackItem *item) {
   Expression *e;
   switch (item->token.type) {
   case T_ID: {
-    if (item->e != NULL) //pokud už je expression vyplnen, vrat ho
+    if (item->e != NULL) // pokud už je expression vyplnen, vrat ho
     {
       return item->e;
     }
@@ -553,9 +552,8 @@ Expression *ExpressionTransform(StackItem *item) {
     e->data.intValue = item->token.val.i;
     break;
   }
-  case KW_TRUE: //misto KW_BOOL pro BOOLTHEN
-  case KW_FALSE:
-  {
+  case KW_TRUE: // misto KW_BOOL pro BOOLTHEN
+  case KW_FALSE: {
     e = NewExpression(E_BOOL);
     e->data.boolValue = item->token.val.b;
     break;
@@ -829,8 +827,7 @@ Statement *ParseLine() {
   case T_MINUS: // Samostatně stojící výraz
   case KW_TRUE:
   case KW_FALSE:
-  case T_NOT:
-  {
+  case T_NOT: {
     s = NewStatement(ST_EXPR);
     s->data.expression = ParseExpression();
     ExpectStatementEnd();

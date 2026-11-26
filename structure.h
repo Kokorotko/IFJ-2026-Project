@@ -9,17 +9,14 @@
 
 #include <stdbool.h>
 
-typedef enum
-{
-  // speciální (End of File, End Of Line, )
+typedef enum {
+  // speciální (End of File, End Of Line, etc.)
   T_EOF,
   T_EOL,
-  T_BLOCKSTART,
-  T_BLOCKEND,
   T_INDENDATION,
   T_ERROR,
   T_SKIP, // Syntax preskoci tento Token
-  // literály a identifikátor
+          // literály a identifikátor
   T_ID,         // identifikátor
   T_INT_LIT,    // čislo int
   T_DOUBLE_LIT, // číslo double
@@ -82,12 +79,10 @@ typedef enum
   KW_FALSE // Boolthen
 } TokType;
 
-typedef struct
-{
+typedef struct {
   TokType type;
   int line;
-  union
-  {
+  union {
     int i;
     double d;
     char *s;
@@ -95,18 +90,17 @@ typedef struct
   } val; // Vybírá se z jednoho (Int, double or char)
 } Token;
 
-typedef enum
-{
-  ERR_OK = 0,        // Liv gud :)
-  ERR_LEX = 1,       // chyba lexikální analýzy (lexém, komentář, odsazení)
-  ERR_SYNTAX = 2,    // chyba syntaktické analýzy (syntaxe, prolog, odsazené bloky)
+typedef enum {
+  ERR_OK = 0,     // Liv gud :)
+  ERR_LEX = 1,    // chyba lexikální analýzy (lexém, komentář, odsazení)
+  ERR_SYNTAX = 2, // chyba syntaktické analýzy (syntaxe, prolog, odsazené bloky)
   ERR_UNDEFINED = 3, // nedefinovaná funkce/proměnná/typ, chybí @main
   ERR_REDEFINED = 4, // redefinice funkce/proměnné/typu, více @main
   ERR_ARGS = 5,      // špatný počet/typ argumentů, parametr u @main
   ERR_TYPE = 6,      // typová kompatibilita, odvození typu, návratový typ
   ERR_ASSIGN = 7,    // zápis do val nebo do parametru funkce
   ERR_OTHER_SEM =
-      10,           // ostatní sémantické chyby (nepovolený return, nulový krok...)
+      10, // ostatní sémantické chyby (nepovolený return, nulový krok...)
   ERR_RUNTIME = 40, // běhová chyba; překladač ji negeneruje, jen kód cílového
                     // programu (EXIT int@40)
   ERR_INTERNAL = 99 // interní chyba překladače (např. malloc)

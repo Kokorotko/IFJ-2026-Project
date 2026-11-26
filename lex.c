@@ -13,8 +13,7 @@
 #include "lex.h"
 #include "structure.h"
 
-typedef struct Check
-{
+typedef struct Check {
   char *check_array;
   int length;
   TokType type;
@@ -45,13 +44,12 @@ static const Keyword_Check Keyword[] = // Keywords list
      {"for", 3, KW_FOR},               // keyword for
      {"List", 4, KW_LIST},             // keyword list
      {"match", 5, KW_MATCH},           // keyword match
-     {"type", 4, KW_TYPE},            // keyword typ
+     {"type", 4, KW_TYPE},             // keyword typ
      {"true", 4, KW_TRUE},             // keyword true
      {"false", 5, KW_FALSE}};          // keyword false
 
-typedef enum // tohle je pro menší větší rovná se a kombinace
-{
-  STATE_START,  // stav start
+typedef enum    // tohle je pro menší větší rovná se a kombinace
+{ STATE_START,  // stav start
   STATE_EQ,     // stav =
   STATE_EQEQ,   // stav ==
   STATE_LE,     // stav <
@@ -71,8 +69,7 @@ typedef enum // tohle je pro menší větší rovná se a kombinace
   STATE_SEMI    // stav ;
 } ScannerState; // specialní znaky
 
-typedef enum
-{
+typedef enum {
   NUM_INTEGER,           // int
   NUM_DOT,               // desetinná tečka
   NUM_FRACTION,          // část za desetinnou tečkou
@@ -141,8 +138,7 @@ void SkipLineComment(FILE *mainFile) // skip komentáře
 {
   int c; // proměnná pro znak
 
-  do
-  {
+  do {
     c = fgetc(mainFile);
   } while (
       c != '\n' &&
@@ -165,7 +161,8 @@ void SkipLineComment(FILE *mainFile) // skip komentáře
 }
 static int SkipBlockComment(FILE *mainFile) // přeskočení blokového komentáře
 {
-  int depth = 1;    // hloubka začíná na 1 protože funcke je volána když už blokové komentář začně
+  int depth = 1; // hloubka začíná na 1 protože funcke je volána když už blokové
+                 // komentář začně
   int newLines = 0; // počet řádků které přeskakujeme
   int previous = 0; // předchozí znak, pro ukončení blokového komentáře
 
@@ -175,8 +172,7 @@ static int SkipBlockComment(FILE *mainFile) // přeskočení blokového komentá
     int c = fgetc(mainFile); // načteme znak ze souboru
     if (c == EOF)            // pokud je znak konec souboru
     {
-      if (ferror(mainFile))
-      {
+      if (ferror(mainFile)) {
         ThrowError(ERR_INTERNAL); // vyhazujeme Internal Error
         exit(ERR_INTERNAL);       // ukončujeme s chybou
       }
@@ -190,18 +186,15 @@ static int SkipBlockComment(FILE *mainFile) // přeskočení blokového komentá
     {
       newLines++; // zvedneme počet přeskočených řádků
     }
-    if (previous == '/' && c == '*') // pokud je předchozí znak '/' a aktualní znak '*' značí to konec komentáře
+    if (previous == '/' && c == '*') // pokud je předchozí znak '/' a aktualní
+                                     // znak '*' značí to konec komentáře
     {
       depth++;
       previous = 0;
-    }
-    else if (previous == '*' && c == '/')
-    {
+    } else if (previous == '*' && c == '/') {
       depth--;
       previous = 0;
-    }
-    else
-    {
+    } else {
       previous = c;
     }
   }
@@ -226,36 +219,29 @@ TryComment(FILE *file,
 
   if (next == '*') // pokud je znak '*¨jedná se o víceřádkový komentář
   {
-    *newlines = SkipBlockComment(file); // do proměnné uložáíme kolik řádku se přeskakuje
+    *newlines = SkipBlockComment(
+        file); // do proměnné uložáíme kolik řádku se přeskakuje
 
     if (*newlines > 0) // pokud je to více než 0
     {
       int c; // proměnná pro znak
 
-      do
-      {
+      do {
         c = fgetc(file);
       } while (c == ' ' || c == '\t' || c == '\r'); // přeskakujeme odsazení
 
-      if (c == EOF)
-      {
-        if (ferror(file))
-        {
+      if (c == EOF) {
+        if (ferror(file)) {
           ThrowError(ERR_INTERNAL);
           exit(ERR_INTERNAL);
         }
-      }
-      else if (c == '\n')
-      {
+      } else if (c == '\n') {
         // LF zpracuje hlavní část lexeru.
-        if (ungetc(c, file) == EOF)
-        {
+        if (ungetc(c, file) == EOF) {
           ThrowError(ERR_INTERNAL);
           exit(ERR_INTERNAL);
         }
-      }
-      else
-      {
+      } else {
         ThrowError(ERR_LEX);
         exit(ERR_LEX);
       }
@@ -264,16 +250,12 @@ TryComment(FILE *file,
   }
 
   // Není to komentář: druhý znak vrátíme.
-  if (next == EOF)
-  {
-    if (ferror(file))
-    {
+  if (next == EOF) {
+    if (ferror(file)) {
       ThrowError(ERR_INTERNAL);
       exit(ERR_INTERNAL);
     }
-  }
-  else if (ungetc(next, file) == EOF)
-  {
+  } else if (ungetc(next, file) == EOF) {
     ThrowError(ERR_INTERNAL);
     exit(ERR_INTERNAL);
   }
@@ -281,14 +263,13 @@ TryComment(FILE *file,
   return false;
 }
 
-static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není bílý znak ani součást komentáře.
+static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není bílý
+                                          // znak ani součást komentáře.
 {
   int c = fgetc(mainFile); // bereme znak
 
-  while (true)
-  {
-    while (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-    {
+  while (true) {
+    while (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
       if (c == '\n') // konec řádku, počet řádku +1
       {
         lineNumber++; // inkrement
@@ -297,16 +278,14 @@ static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není b
       c = fgetc(mainFile); // další znak
     }
 
-    if (c == EOF && ferror(mainFile))
-    {
+    if (c == EOF && ferror(mainFile)) {
       ThrowError(ERR_INTERNAL);
       exit(ERR_INTERNAL);
     }
 
     int commentNewlines = 0;
 
-    if (c == '/' && TryComment(mainFile, &commentNewlines))
-    {
+    if (c == '/' && TryComment(mainFile, &commentNewlines)) {
       lineNumber += commentNewlines;
       c = fgetc(mainFile);
       continue;
@@ -332,12 +311,10 @@ static void CheckImport(FILE *mainFile) // kontrola pro import sekvenci
     }
 
     // Uvnitř ifj26 nepřeskakujeme bílé znaky.
-    if (expected[i + 1] != '\0')
-    {
+    if (expected[i + 1] != '\0') {
       c = fgetc(mainFile);
 
-      if (c == EOF && ferror(mainFile))
-      {
+      if (c == EOF && ferror(mainFile)) {
         ThrowError(ERR_INTERNAL);
         exit(ERR_INTERNAL);
       }
@@ -364,10 +341,10 @@ void TokenInicializator(FILE *file) // inicializace tokenu
 {
   free(indentStack); // uvolnění paměti pro asociativní pole
 
-  indentStack = malloc(sizeof *indentStack); // připravení asociattivního pole, užívá se pro indent
-                                             // zatím bez velikosti
-  if (indentStack == NULL)
-  {
+  indentStack =
+      malloc(sizeof *indentStack); // připravení asociattivního pole, užívá se
+                                   // pro indent zatím bez velikosti
+  if (indentStack == NULL) {
     ThrowError(ERR_INTERNAL); // Internal error
     exit(ERR_INTERNAL);       // odejdi s Internal error
   }
@@ -400,17 +377,13 @@ Token TokenGiver() // thsi shti...
     returnToken.val.s = NULL;      // hodnota pro vrácení
     return returnToken;            // hodnota tokenu
     // internal error, buffer prob. :thumbs_up:
-  }
-  else
-  {
+  } else {
 #pragma region indent
     if (nextChar != EOF) // pokud další znak není EOF
     {
       c = nextChar;   // ulož následující znak do aktualního znaku
       nextChar = EOF; // do dalšího znaku dej EOF
-    }
-    else
-    {
+    } else {
       c = fgetc(mainFile); // načti znak
     }
 
@@ -418,20 +391,16 @@ Token TokenGiver() // thsi shti...
     {
       numOfSpaces = 0; // počet mezer (odsazení) nastav na 0
 
-      while (true)
-      {
+      while (true) {
         numOfSpaces = 0;
         bool hasTab = false;
 
         // Počítáme pouze odsazení před prvním znakem řádku.
-        while (c == ' ' || c == '\t')
-        {
+        while (c == ' ' || c == '\t') {
           if (c == ' ') // pokud je znak mezera
           {
             numOfSpaces++; // počet mezer ++
-          }
-          else
-          {
+          } else {
             hasTab = true;
           }
 
@@ -439,12 +408,10 @@ Token TokenGiver() // thsi shti...
         }
 
         // Za sebou může být i několik komentářů.
-        while (c == '/')
-        {
+        while (c == '/') {
           int commentNewlines = 0;
 
-          if (!TryComment(mainFile, &commentNewlines))
-          {
+          if (!TryComment(mainFile, &commentNewlines)) {
             break; // Je to dělení, nikoli komentář.
           }
 
@@ -452,22 +419,19 @@ Token TokenGiver() // thsi shti...
           c = fgetc(mainFile);
 
           // Mezery za komentářem už nejsou úvodní odsazení.
-          while (c == ' ' || c == '\t' || c == '\r')
-          {
+          while (c == ' ' || c == '\t' || c == '\r') {
             c = fgetc(mainFile);
           }
         }
 
-        if (c == '\n')
-        {
+        if (c == '\n') {
           // Prázdný nebo čistě komentářový řádek.
           lineNumber++;
           c = fgetc(mainFile);
           continue;
         }
 
-        if (c == EOF)
-        {
+        if (c == EOF) {
           break; // Zpracuje ho stávající větev pro EOF.
         }
 
@@ -481,32 +445,35 @@ Token TokenGiver() // thsi shti...
       }
       if (c != '\n' && c != EOF) // Prázdný řádek ani EOF nesmí změnit odsazení.
       {
-        if (numOfSpaces > indentStack[indent])
-        {
+        if (numOfSpaces > indentStack[indent]) {
           // Začíná nová, hlubší úroveň.
-          int *temp = realloc(indentStack, (indent + 2) * sizeof *indentStack); // realokace paměti, pro přidání nové asociativní hodnoty
-          if (temp == NULL)                                                     // pokud se alokace nezdařila
+          int *temp =
+              realloc(indentStack,
+                      (indent + 2) *
+                          sizeof *indentStack); // realokace paměti, pro přidání
+                                                // nové asociativní hodnoty
+          if (temp == NULL) // pokud se alokace nezdařila
           {
             free(buffer);
             ThrowError(ERR_INTERNAL);
             exit(ERR_INTERNAL);
           }
 
-          indentStack = temp;                // předat realokovanou paměť aktualní
-          indent++;                          // zvýšit indent
-          indentStack[indent] = numOfSpaces; // pro aktualní indent přiřadit odsazení
-        }
-        else if (numOfSpaces < indentStack[indent]) // pokud je odsazení menší
+          indentStack = temp; // předat realokovanou paměť aktualní
+          indent++;           // zvýšit indent
+          indentStack[indent] =
+              numOfSpaces; // pro aktualní indent přiřadit odsazení
+        } else if (numOfSpaces < indentStack[indent]) // pokud je odsazení menší
         {
           // Můžeme se vracet přes několik úrovní najednou.
-          while (indent > 0 && numOfSpaces < indentStack[indent]) // odsazení zpět
+          while (indent > 0 &&
+                 numOfSpaces < indentStack[indent]) // odsazení zpět
           {
             indent--;
           }
 
           // Odsazení musí odpovídat některé dřívější úrovni.
-          if (numOfSpaces != indentStack[indent])
-          {
+          if (numOfSpaces != indentStack[indent]) {
             free(buffer);
             ThrowError(ERR_LEX);
             exit(ERR_LEX);
@@ -514,8 +481,7 @@ Token TokenGiver() // thsi shti...
         }
         lineStart = false; // už není začátek řádku
         // Znak uchováme pro další volání TokenGiver().
-        if (indent > 0)
-        {
+        if (indent > 0) {
           nextChar = c;
 
           returnToken.type = T_INDENDATION;
@@ -526,39 +492,33 @@ Token TokenGiver() // thsi shti...
           return returnToken;
         }
       }
-    }
-    else
-    {
+    } else {
       // Mezery a komentáře mezi běžnými tokeny.
-      while (true)
-      {
-        while (c == ' ' || c == '\t' || c == '\r') // mezery nebo tabulátor nebo return
+      while (true) {
+        while (c == ' ' || c == '\t' ||
+               c == '\r') // mezery nebo tabulátor nebo return
         {
           c = fgetc(mainFile); // další znak
         }
 
         int commentNewlines = 0;
 
-        if (c != '/' || !TryComment(mainFile, &commentNewlines))
-        {
+        if (c != '/' || !TryComment(mainFile, &commentNewlines)) {
           break;
         }
 
         lineNumber += commentNewlines;
         c = fgetc(mainFile);
 
-        if (commentNewlines > 0)
-        {
+        if (commentNewlines > 0) {
           // TryComment už ověřil, že zde smí být jen LF nebo EOF.
           int endLine = lineNumber;
 
-          if (c == '\n')
-          {
+          if (c == '\n') {
             lineNumber++;
           }
 
-          if (parenDepth == 0)
-          {
+          if (parenDepth == 0) {
             lineStart = true;
 
             returnToken.type = T_EOL;
@@ -570,8 +530,7 @@ Token TokenGiver() // thsi shti...
           }
 
           // Uvnitř závorek komentář neukončuje logický řádek.
-          if (c == '\n')
-          {
+          if (c == '\n') {
             c = fgetc(mainFile);
           }
         }
@@ -584,8 +543,7 @@ Token TokenGiver() // thsi shti...
     // identifikátorů, čísel atd.
     if (c == '\n') // konec řádku
     {
-      if (parenDepth > 0)
-      {
+      if (parenDepth > 0) {
         returnToken.type = T_SKIP;     // vrať skip, přeskakuje konec řádku
         returnToken.line = lineNumber; // vrať číslo řádku
         returnToken.val.s = NULL;      // bez honoty
@@ -621,19 +579,16 @@ Token TokenGiver() // thsi shti...
       const char *expected = "main"; // nastavení očekávaného stringu na "main"
 
       // Znak @ už je načtený. Musí bezprostředně následovat main.
-      for (int i = 0; expected[i] != '\0'; i++)
-      {
+      for (int i = 0; expected[i] != '\0'; i++) {
         c = fgetc(mainFile);
 
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
           exit(ERR_INTERNAL);
         }
 
-        if (c != expected[i])
-        {
+        if (c != expected[i]) {
           free(buffer);
           ThrowError(ERR_LEX);
           exit(ERR_LEX);
@@ -643,23 +598,20 @@ Token TokenGiver() // thsi shti...
       // Ověříme, že main není začátek delšího identifikátoru.
       c = fgetc(mainFile);
 
-      if (c == EOF && ferror(mainFile))
-      {
+      if (c == EOF && ferror(mainFile)) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
         exit(ERR_INTERNAL);
       }
 
-      if (IsIdentifierPart(c))
-      {
+      if (IsIdentifierPart(c)) {
         free(buffer);
         ThrowError(ERR_LEX);
         exit(ERR_LEX);
       }
 
       // Znak za anotací patří dalšímu zpracování.
-      if (c != EOF && ungetc(c, mainFile) == EOF)
-      {
+      if (c != EOF && ungetc(c, mainFile) == EOF) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
         exit(ERR_INTERNAL);
@@ -676,11 +628,10 @@ Token TokenGiver() // thsi shti...
 #pragma region Identifier //--------------------------------------------------------------------------------------------
     if (IsIdentifierStart(c)) // pokud znak může být začátkem identifikátoru
     {
-      do
-      {
-        char *temp = realloc(buffer, length + 2); // realokace paměti na  znak + ukončující znak
-        if (temp == NULL)
-        {
+      do {
+        char *temp = realloc(
+            buffer, length + 2); // realokace paměti na  znak + ukončující znak
+        if (temp == NULL) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
@@ -694,42 +645,41 @@ Token TokenGiver() // thsi shti...
           IsIdentifierPart(c)); // pokud zna kmůže být součástí identifikátoru
 
       buffer[length] = '\0'; // na konec stringu přidej ukončující znak
-      if (c == EOF && ferror(mainFile))
-      {
+      if (c == EOF && ferror(mainFile)) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
 
-      if (c != EOF && ungetc(c, mainFile) == EOF)
-      {
+      if (c != EOF && ungetc(c, mainFile) == EOF) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
 
-      if (length == 1 && buffer[0] == '_') // ověření zdali identifikátor není jen _ - "error jsut underscore, not on my watch"
+      if (length == 1 &&
+          buffer[0] == '_') // ověření zdali identifikátor není jen _ - "error
+                            // jsut underscore, not on my watch"
       {
         free(buffer);
         ThrowError(ERR_LEX);
       }
-      returnToken.type = KeywordOrIdentifier(buffer); // do typu tokenu přiřadí typ na základě funkce KeywordOrIdentifier
+      returnToken.type =
+          KeywordOrIdentifier(buffer); // do typu tokenu přiřadí typ na základě
+                                       // funkce KeywordOrIdentifier
       returnToken.line = lineNumber;
       returnToken.val.s = NULL;
       if (returnToken.type == KW_TRUE) // BOOLTHEN
       {
         returnToken.val.b = true;
       }
-      if (returnToken.type == KW_FALSE)
-      {
+      if (returnToken.type == KW_FALSE) {
         returnToken.val.b = false;
       }
-      if (returnToken.type == KW_IMPORT)
-      {
+      if (returnToken.type == KW_IMPORT) {
         free(buffer);
         CheckImport(mainFile);
         return returnToken;
       }
-      if (returnToken.type == T_ID)
-      {
+      if (returnToken.type == T_ID) {
         returnToken.val.s = buffer;
         buffer = NULL;
       }
@@ -760,20 +710,16 @@ Token TokenGiver() // thsi shti...
         // Tři úvodní uvozovky: víceřádkový řetězec.
         multiline = true;
         c = fgetc(mainFile); // načti znak
-      }
-      else
-      {
+      } else {
         // Dvě uvozovky: prázdný řetězec.
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
           exit(ERR_INTERNAL);
         }
 
         // Znak za prázdným řetězcem patří dalšímu tokenu.
-        if (c != EOF && ungetc(c, mainFile) == EOF)
-        {
+        if (c != EOF && ungetc(c, mainFile) == EOF) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
           exit(ERR_INTERNAL);
@@ -783,24 +729,20 @@ Token TokenGiver() // thsi shti...
       }
     }
 
-    while (!done)
-    {
-      if (c == EOF)
-      {
+    while (!done) {
+      if (c == EOF) {
         ErrorCode error = ferror(mainFile) ? ERR_INTERNAL : ERR_LEX;
         free(buffer);
         ThrowError(error);
         exit(error);
       }
 
-      if (multiline)
-      {
+      if (multiline) {
         if (c == '"') // pokud je znak '"'
         {
           quotes++; // počet uvozovek +1
 
-          if (quotes == 3)
-          {
+          if (quotes == 3) {
             break; // Tři uvozovky ukončují řetězec.
           }
 
@@ -809,8 +751,7 @@ Token TokenGiver() // thsi shti...
         }
 
         // Jedna nebo dvě uvozovky jsou součástí obsahu.
-        while (quotes > 0)
-        {
+        while (quotes > 0) {
           char *temp = realloc(buffer, length + 2); // realokace paměti
 
           if (temp == NULL) // ověření realokace
@@ -826,38 +767,30 @@ Token TokenGiver() // thsi shti...
           quotes--;
         }
 
-        if (c == '\n')
-        {
+        if (c == '\n') {
           lineNumber++;
         }
-      }
-      else
-      {
-        if (c == '"')
-        {
+      } else {
+        if (c == '"') {
           break; // Konec běžného řetězce.
         }
 
-        if (c == '\n')
-        {
+        if (c == '\n') {
           free(buffer);
           ThrowError(ERR_LEX);
           exit(ERR_LEX);
         }
 
-        if (c == '\\')
-        {
+        if (c == '\\') {
           c = fgetc(mainFile);
 
-          if (c == EOF && ferror(mainFile))
-          {
+          if (c == EOF && ferror(mainFile)) {
             free(buffer);
             ThrowError(ERR_INTERNAL);
             exit(ERR_INTERNAL);
           }
 
-          switch (c)
-          {
+          switch (c) {
           case '\\':
             c = '\\';
             break;
@@ -884,8 +817,7 @@ Token TokenGiver() // thsi shti...
       // Uložení jednoho znaku obsahu.
       char *temp = realloc(buffer, length + 2); // realokace paměti
 
-      if (temp == NULL)
-      {
+      if (temp == NULL) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
         exit(ERR_INTERNAL);
@@ -908,14 +840,14 @@ Token TokenGiver() // thsi shti...
 #pragma region Paren ()
   if (c == '(' || c == ')' || c == '[' || c == ']') // úvodní if
   {
-    switch (c)
-    {
+    switch (c) {
     case '(':
       parenDepth++;
       returnToken.type = T_LPAREN; // token levá závorka
       break;
     case ')':
-      if (parenDepth > 0) // pokud je počet závorek větší než nula, někde nebyly uzavřeny
+      if (parenDepth >
+          0) // pokud je počet závorek větší než nula, někde nebyly uzavřeny
       {
         parenDepth--; // snížení počtu -> uzavřeno
       }
@@ -942,7 +874,8 @@ Token TokenGiver() // thsi shti...
 
 #pragma endregion
 #pragma region Num
-  if (IsDigit(c) || c == '.') // číslo může začínat číslem (int / double) nebo tečkou (double)
+  if (IsDigit(c) ||
+      c == '.') // číslo může začínat číslem (int / double) nebo tečkou (double)
   {
     NumberState numState; // inicializace numState
     bool done = false;
@@ -952,15 +885,13 @@ Token TokenGiver() // thsi shti...
     {
       int next = fgetc(mainFile); // načteme další znak
 
-      if (next == EOF && ferror(mainFile))
-      {
+      if (next == EOF && ferror(mainFile)) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
 
       // Podívali jsme se dopředu, znak zase vrátíme.
-      if (next != EOF && ungetc(next, mainFile) == EOF)
-      {
+      if (next != EOF && ungetc(next, mainFile) == EOF) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
@@ -976,19 +907,15 @@ Token TokenGiver() // thsi shti...
       }
 
       numState = NUM_DOT; // pokud nebyl vrácen token T_DOT, jedná se o číslo
-    }
-    else
-    {
+    } else {
       numState = NUM_INTEGER; // pokud není tečka, jde o číslo, zatím INT
     }
 
-    do
-    {
+    do {
       // Uložíme aktuální znak do bufferu.
       char *temp = realloc(buffer, length + 2); // realokace paměti
 
-      if (temp == NULL)
-      {
+      if (temp == NULL) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
@@ -1001,8 +928,7 @@ Token TokenGiver() // thsi shti...
       // Načteme další znak a rozhodneme, co s ním.
       c = fgetc(mainFile); // další znak
 
-      if (c == EOF && ferror(mainFile))
-      {
+      if (c == EOF && ferror(mainFile)) {
         free(buffer);
         ThrowError(ERR_INTERNAL);
       }
@@ -1011,36 +937,24 @@ Token TokenGiver() // thsi shti...
       {
 #pragma region Int
       case NUM_INTEGER: // case pro INT
-        if (IsDigit(c))
-        {
+        if (IsDigit(c)) {
           numState = NUM_INTEGER; // pokud je dašlí znak čílslo, zůstává v int
-        }
-        else if (c == '.')
-        {
+        } else if (c == '.') {
           numState = NUM_DOT; // pokud je tečka, opět stav NUM_DOT
-        }
-        else if (c == 'e' || c == 'E')
-        {
+        } else if (c == 'e' || c == 'E') {
           numState = NUM_EXP_START; // stav Exponent
-        }
-        else if (c == '_')
-        {
+        } else if (c == '_') {
           numState = NUM_INTEGER_UNDERCORE; // int podtržítko
-        }
-        else
-        {
+        } else {
           done = true;
         }
         break;
 #pragma endregion
 #pragma region Num Dot
       case NUM_DOT:
-        if (IsDigit(c))
-        {
+        if (IsDigit(c)) {
           numState = NUM_FRACTION; // pokud je za tečkou číslo, jdeme do double
-        }
-        else
-        {
+        } else {
           free(buffer);
           ThrowError(ERR_LEX);
         }
@@ -1048,24 +962,17 @@ Token TokenGiver() // thsi shti...
 #pragma endregion
 #pragma region NUM FRACTION
       case NUM_FRACTION:
-        if (IsDigit(c))
-        {
-          numState = NUM_FRACTION; // stav zlomek
-        }
-        else if (c == 'e' || c == 'E') // změna stvu na exponent
+        if (IsDigit(c)) {
+          numState = NUM_FRACTION;       // stav zlomek
+        } else if (c == 'e' || c == 'E') // změna stvu na exponent
         {
           numState = NUM_EXP_START;
-        }
-        else if (c == 'd' || c == 'D') // určení typu a konec čísla
+        } else if (c == 'd' || c == 'D') // určení typu a konec čísla
         {
           numState = NUM_SUFFIX;
-        }
-        else if (c == '_')
-        {
+        } else if (c == '_') {
           numState = NUM_FRACTION_UNDERCORE; // podtržítko v double
-        }
-        else
-        {
+        } else {
           done = true;
         }
         break;
@@ -1075,13 +982,9 @@ Token TokenGiver() // thsi shti...
         if (c == '+' || c == '-') // znamánko exponentu
         {
           numState = NUM_EXP_SIGN; // stav znaménko exponentu
-        }
-        else if (IsDigit(c))
-        {
+        } else if (IsDigit(c)) {
           numState = NUM_EXP_DIGITS; // stav čísla v exponentu
-        }
-        else
-        {
+        } else {
           free(buffer);
           ThrowError(ERR_LEX);
         }
@@ -1089,12 +992,9 @@ Token TokenGiver() // thsi shti...
 #pragma endregion
 #pragma region EXP SIGN
       case NUM_EXP_SIGN: //  znaménko exponentu
-        if (IsDigit(c))
-        {
+        if (IsDigit(c)) {
           numState = NUM_EXP_DIGITS; // čísla v exponentu
-        }
-        else
-        {
+        } else {
           free(buffer);
           ThrowError(ERR_LEX);
         }
@@ -1102,44 +1002,30 @@ Token TokenGiver() // thsi shti...
 #pragma endregion
 #pragma region EXP DIGITS
       case NUM_EXP_DIGITS:
-        if (IsDigit(c))
-        {
-          numState = NUM_EXP_DIGITS; // pokud znak byl číslo, zustává ve stejném stavu
-        }
-        else if (c == 'd' || c == 'D') // pořechod do stavu suffix
+        if (IsDigit(c)) {
+          numState =
+              NUM_EXP_DIGITS; // pokud znak byl číslo, zustává ve stejném stavu
+        } else if (c == 'd' || c == 'D') // pořechod do stavu suffix
         {
           numState = NUM_SUFFIX;
-        }
-        else if (c == '_')
-        {
+        } else if (c == '_') {
           numState = NUM_EXP_UNDERSCORE; // podtržítko v exponentu
-        }
-        else
-        {
+        } else {
           done = true;
         }
         break;
       case NUM_INTEGER_UNDERCORE:
       case NUM_FRACTION_UNDERCORE:
-      case NUM_EXP_UNDERSCORE:
-      {
-        if (IsDigit(c))
-        {
-          if (numState == NUM_INTEGER_UNDERCORE)
-          {
+      case NUM_EXP_UNDERSCORE: {
+        if (IsDigit(c)) {
+          if (numState == NUM_INTEGER_UNDERCORE) {
             numState = NUM_INTEGER;
-          }
-          else if (numState == NUM_FRACTION_UNDERCORE)
-          {
+          } else if (numState == NUM_FRACTION_UNDERCORE) {
             numState = NUM_FRACTION;
-          }
-          else
-          {
+          } else {
             numState = NUM_EXP_DIGITS;
           }
-        }
-        else
-        {
+        } else {
           free(buffer);
           ThrowError(ERR_LEX);
         }
@@ -1155,16 +1041,14 @@ Token TokenGiver() // thsi shti...
     } while (!done);
 #pragma endregion
     // Znak, který už nepatří do čísla, vrátíme.
-    if (c != EOF && ungetc(c, mainFile) == EOF)
-    {
+    if (c != EOF && ungetc(c, mainFile) == EOF) {
       free(buffer);
       ThrowError(ERR_INTERNAL);
     }
     // Zpracování čísla
     // -------------------------------------------------------------------------------------
     int wrtieIndex = 0;
-    for (int readIndex = 0; readIndex < length; readIndex++)
-    {
+    for (int readIndex = 0; readIndex < length; readIndex++) {
       if (buffer[readIndex] != '_') // zápis čísla bez podttržítek
       {
         buffer[wrtieIndex] = buffer[readIndex];
@@ -1177,21 +1061,16 @@ Token TokenGiver() // thsi shti...
 
     returnToken.line = lineNumber;
 
-    if (numState == NUM_INTEGER)
-    {
+    if (numState == NUM_INTEGER) {
       returnToken.type = T_INT_LIT;
-      if (length > 1 && buffer[0] == '0')
-      {
+      if (length > 1 && buffer[0] == '0') {
         free(buffer);
         ThrowError(ERR_LEX);
       }
       returnToken.val.i = strtoll(buffer, NULL, 10);
-    }
-    else
-    {
+    } else {
       if (length > 0 &&
-          (buffer[length - 1] == 'd' || buffer[length - 1] == 'D'))
-      {
+          (buffer[length - 1] == 'd' || buffer[length - 1] == 'D')) {
         length--;
         buffer[length] = '\0';
       }
@@ -1205,21 +1084,17 @@ Token TokenGiver() // thsi shti...
 
   /*i nomine patris et filii et spiritus sancti */
   if (c == '=' || c == '<' || c == '>' || c == '+' || c == '-' || c == '*' ||
-      c == '/' || c == '!' || c == ',' || c == ':' ||
-      c == ';' || c == '&' ||
+      c == '/' || c == '!' || c == ',' || c == ':' || c == ';' || c == '&' ||
       c == '|') // podmínka pro specialní znaky, od nich se odvíjí stavy pro
                 // tokeny
   {
     ScannerState state = STATE_START;
 
-    while (true)
-    {
+    while (true) {
 #pragma region Switch start_state
-      switch (state)
-      {
+      switch (state) {
       case STATE_START:
-        switch (c)
-        {
+        switch (c) {
         case '=':
           state = STATE_EQ;
           break;
@@ -1268,20 +1143,17 @@ Token TokenGiver() // thsi shti...
 #pragma region Not_State
       case STATE_NOT:
         c = fgetc(mainFile);
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
 
-        if (c == '=')
-        {
+        if (c == '=') {
           state = STATE_NEQ;
           break;
         }
         // samotný '!' (BOOLTHEN), načtený znak patří dalšímu tokenu
-        if (c != EOF && ungetc(c, mainFile) == EOF)
-        {
+        if (c != EOF && ungetc(c, mainFile) == EOF) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
@@ -1289,32 +1161,26 @@ Token TokenGiver() // thsi shti...
         goto operator_done;
 #pragma endregion
 #pragma region And_Or_State
-      case STATE_AND:
-      {
+      case STATE_AND: {
         c = fgetc(mainFile);
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
-        if (c != '&') 
-        {
+        if (c != '&') {
           free(buffer);
           ThrowError(ERR_LEX);
         }
         returnToken.type = T_AND;
         goto operator_done;
       }
-      case STATE_OR:
-      {
+      case STATE_OR: {
         c = fgetc(mainFile);
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
-        if (c != '|') 
-        {
+        if (c != '|') {
           free(buffer);
           ThrowError(ERR_LEX);
         }
@@ -1355,14 +1221,12 @@ Token TokenGiver() // thsi shti...
       case STATE_GR:
         c = fgetc(mainFile);
 
-        if (c == EOF && ferror(mainFile))
-        {
+        if (c == EOF && ferror(mainFile)) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
 
-        if (c == '=')
-        {
+        if (c == '=') {
           if (state == STATE_EQ)
             state = STATE_EQEQ;
           else if (state == STATE_LE)
@@ -1373,8 +1237,7 @@ Token TokenGiver() // thsi shti...
           break;
         }
         // Znak už nepatří do operátoru, vrátíme ho.
-        if (c != EOF && ungetc(c, mainFile) == EOF)
-        {
+        if (c != EOF && ungetc(c, mainFile) == EOF) {
           free(buffer);
           ThrowError(ERR_INTERNAL);
         }
@@ -1410,7 +1273,8 @@ Token TokenGiver() // thsi shti...
     return returnToken;
   }
   // ověření
-  // fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n", c,
+  // fprintf(stderr, "Nerozpoznany znak: ASCII %d\nLine: %d\nParenDepth: %d\n",
+  // c,
   //         lineNumber, parenDepth); // kontrola
   free(buffer);
   ThrowError(ERR_LEX);

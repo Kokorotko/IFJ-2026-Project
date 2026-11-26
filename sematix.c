@@ -57,9 +57,9 @@ void PushScope(SemContext *ctx) {
   ctx->curScope = newScope;
 }
 
-static void FreeVarSym(void *data){free(data);}
+static void FreeVarSym(void *data) { free(data); }
 
-static void FreeFuncSym(void *data){free(data);}
+static void FreeFuncSym(void *data) { free(data); }
 
 void ScopePop(SemContext *ctx) {
   if (ctx->curScope == NULL) {
@@ -82,7 +82,7 @@ VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
 VarSym *FindVar(SemContext *ctx, const char *name) {
   for (Scope *s = ctx->curScope; s != NULL; s = s->parent) {
     Tree_Node *node = Search(s->vars, (char *)name);
-    if(node != NULL){
+    if (node != NULL) {
       return (VarSym *)node->data;
     }
   }
@@ -99,11 +99,11 @@ int AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
   int tempId = v->id;
   TreeStatus status = Tree_OK;
   ctx->curScope->vars = InsertNode(ctx->curScope->vars, v, name, &status);
-  if(status == Tree_DUPLICATE){
+  if (status == Tree_DUPLICATE) {
     free(v);
     ThrowError(ERR_REDEFINED);
 
-  }else if(status == Tree_MEM_ERR){
+  } else if (status == Tree_MEM_ERR) {
     free(v);
     ThrowError(ERR_INTERNAL);
   }
@@ -181,11 +181,11 @@ DataType analyzeExpression(SemContext *ctx, Expression *exp) {
     exp->resultType = DT_BOOL;
     return DT_BOOL;
   case E_VAR: { // aby WC23 nehazel warning
-    VarSym *v = FindVar(ctx, exp->data.name);    
+    VarSym *v = FindVar(ctx, exp->data.name);
     if (v == NULL) {
       ThrowError(ERR_UNDEFINED);
     }
-    exp->varId = v->id; //přenos ID
+    exp->varId = v->id; // přenos ID
     exp->resultType = v->type;
     return v->type;
   }
@@ -331,7 +331,7 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
       ThrowError(ERR_TYPE);
     }
     sta->data.ST_vardef.id = AddVar(ctx, sta->data.ST_vardef.name, declaredType,
-           sta->data.ST_vardef.isVar);
+                                    sta->data.ST_vardef.isVar);
     return DT_UNIT;
   }
   case ST_ASSIGN: {
@@ -342,8 +342,8 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
     if (v->isVar == false) {
       ThrowError(ERR_ASSIGN);
     }
-   sta->data.ST_assign.id = v->id;
-   sta->data.ST_assign.type = v->type;
+    sta->data.ST_assign.id = v->id;
+    sta->data.ST_assign.type = v->type;
     DataType valType = analyzeExpression(ctx, sta->data.ST_assign.value);
     if (!isTypeCompatible(v->type, valType)) {
       ThrowError(ERR_TYPE);
@@ -454,7 +454,7 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
     return;
   }
   int savedVarId = ctx->nextVarId;
-  ctx->nextVarId = 0; //reset cislovani
+  ctx->nextVarId = 0; // reset cislovani
   funcState[idx] = 1;
 
   Scope *savedScope = ctx->curScope;
@@ -490,7 +490,7 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
   }
   ScopePop(ctx);
 
-  ctx->nextVarId = savedVarId; //vrácení hodnoty
+  ctx->nextVarId = savedVarId; // vrácení hodnoty
   ctx->curScope = savedScope;
   ctx->curFuncRetType = savedRetType;
   ctx->curFuncExplicitUnit = savedExplicitUnit;

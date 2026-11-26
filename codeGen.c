@@ -270,19 +270,15 @@ void GenExpr(Expression *e) {
     GenCall(e);
     break;
 
-  case E_BOOL:
-  {
-    if (e->data.boolValue)
-    {
+  case E_BOOL: {
+    if (e->data.boolValue) {
       Emit("PUSHS bool@%s", "true");
-    }
-    else 
-    {
+    } else {
       Emit("PUSHS bool@%s", "false");
     }
     break;
   }
-}
+  }
 }
 
 /// @brief Návrat z funkce: hodnota (nebo nil) na zásobník + epilog
@@ -303,7 +299,8 @@ void GenReturn(Expression *value) {
   Emit("RETURN");
 }
 
-/// @brief Pre-pass: DEFVAR všech lokálních proměnných funkce (včetně vnořených bloků)
+/// @brief Pre-pass: DEFVAR všech lokálních proměnných funkce (včetně vnořených
+/// bloků)
 void VarPreparation(Block *b) {
   MallocChecker(b);
   Statement *s = b->first;
@@ -541,7 +538,7 @@ int GenProgram(FuncDef *innerProgram, FILE *output) {
   Emit("DEFVAR GF@$tmp2"); // pro CONCAT
   Emit("DEFVAR GF@$tmp3"); // pro PRINT
 
-  //zavolej @main a skonči
+  // zavolej @main a skonči
   FuncDef *f = innerProgram;
   while (f != NULL && !f->isMain) {
     f = f->next;

@@ -97,7 +97,7 @@ int DestroyTree(Tree_Node *root, FreeDataFnc free_data) {
   if (root == NULL) {
     return 1;
   }
-  if(free_data == NULL){
+  if (free_data == NULL) {
     return -1;
   }
 
