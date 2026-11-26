@@ -23,29 +23,29 @@ typedef struct Check
 Token returnToken;
 
 static const Keyword_Check Keyword[] = // Keywords list
-    {{"@main", 5, KW_MAIN},
-     {"def", 3, KW_DEF},
-     {"do", 2, KW_DO},
-     {"Double", 6, KW_DOUBLE},
-     {"else", 4, KW_ELSE},
-     {"if", 2, KW_IF},
-     {"import", 6, KW_IMPORT},
-     {"Int", 3, KW_INT},
-     {"return", 6, KW_RETURN},
-     {"String", 6, KW_STRING},
-     {"then", 4, KW_THEN},
-     {"Unit", 4, KW_UNIT},
-     {"val", 3, KW_VAL},
-     {"var", 3, KW_VAR},
-     {"while", 5, KW_WHILE},
-     {"Boolean", 7, KW_BOOL},
-     {"case", 4, KW_CASE},
-     {"class", 5, KW_CLASS},
-     {"extension", 9, KW_EXTENSION},
-     {"for", 3, KW_FOR},
-     {"List", 4, KW_LIST},
-     {"match", 5, KW_MATCH},
-     {"type", 4, KW_TYPE}};
+    {{"@main", 5, KW_MAIN},            // keyword @main
+     {"def", 3, KW_DEF},               // keyword def
+     {"do", 2, KW_DO},                 // keyword do (do while cyklus)
+     {"Double", 6, KW_DOUBLE},         // keyword double
+     {"else", 4, KW_ELSE},             // keyword else
+     {"if", 2, KW_IF},                 // keyword if
+     {"import", 6, KW_IMPORT},         // keyword import (ifj26.*)
+     {"Int", 3, KW_INT},               // keyword int
+     {"return", 6, KW_RETURN},         // keyword return
+     {"String", 6, KW_STRING},         // keyword string
+     {"then", 4, KW_THEN},             // keyword then
+     {"Unit", 4, KW_UNIT},             // keyword unit
+     {"val", 3, KW_VAL},               // keyword val
+     {"var", 3, KW_VAR},               // keyword var
+     {"while", 5, KW_WHILE},           // keyword while
+     {"Boolean", 7, KW_BOOL},          // keyword bool
+     {"case", 4, KW_CASE},             // keyword case
+     {"class", 5, KW_CLASS},           // keyword class
+     {"extension", 9, KW_EXTENSION},   // keyword extension
+     {"for", 3, KW_FOR},               // keyword for
+     {"List", 4, KW_LIST},             // keyword list
+     {"match", 5, KW_MATCH},           // keyword match
+     {"type", 4, KW_TYPE}};            // keyword typ
 
 typedef enum // tohle je pro menší větší rovná se a kombinace
 {
@@ -222,8 +222,7 @@ TryComment(FILE *file,
 
   if (next == '*') // pokud je znak '*¨jedná se o víceřádkový komentář
   {
-    *newlines = SkipBlockComment(
-        file); // do proměnné uložáíme kolik řádku se přeskakuje
+    *newlines = SkipBlockComment(file); // do proměnné uložáíme kolik řádku se přeskakuje
 
     if (*newlines > 0) // pokud je to více než 0
     {
@@ -279,9 +278,8 @@ TryComment(FILE *file,
 }
 
 static int ImportNextChar(FILE *mainFile) // Vrátí první znak, který není bílý
-                                          // znak ani součást komentáře.
-{
-  int c = fgetc(mainFile); // bereme znak
+{                                         // znak ani součást komentáře.
+  int c = fgetc(mainFile);                // bereme znak
 
   while (true)
   {
@@ -362,9 +360,9 @@ void TokenInicializator(FILE *file) // inicializace tokenu
 {
   free(indentStack); // uvolnění paměti pro asociativní pole
 
-  indentStack = malloc(sizeof *indentStack); // připravení asociattivního pole,
+  indentStack = malloc(sizeof *indentStack); // připravení asociattivního pole, užívá se pro indent
                                              // zatím bez velikosti
-  if (indentStack == NULL)                   //
+  if (indentStack == NULL)
   {
     ThrowError(ERR_INTERNAL); // Internal error
     exit(ERR_INTERNAL);       // odejdi s Internal error
