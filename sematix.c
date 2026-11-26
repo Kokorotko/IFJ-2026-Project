@@ -57,17 +57,16 @@ void PushScope(SemContext *ctx) {
   ctx->curScope = newScope;
 }
 
+static void FreeVarSym(void *data){free(data);}
+
+static void FreeFuncSym(void *data){free(data);}
+
 void ScopePop(SemContext *ctx) {
   if (ctx->curScope == NULL) {
     return;
   }
   Scope *old = ctx->curScope;
-  VarSym *v = old->vars;
-  while (v != NULL) {
-    VarSym *next = v->next;
-    free(v);
-    v = next;
-  }
+  DestroyTree(old->vars, FreeVarSym);
   ctx->curScope = old->parent; // Vratime se o uroven vys
   free(old);
 }
@@ -76,52 +75,45 @@ VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
   if (ctx->curScope == NULL) {
     return NULL;
   }
-  for (VarSym *v = ctx->curScope->vars; v != NULL; v = v->next) {
-    if (strcmp(v->name, name) == 0) {
-      return v;
-    }
-  }
-  return NULL;
+  Tree_Node *node = Search(ctx->curScope->vars, (char *)name);
+  return (node != NULL) ? (VarSym *)node->data : NULL;
 }
 
 VarSym *FindVar(SemContext *ctx, const char *name) {
   for (Scope *s = ctx->curScope; s != NULL; s = s->parent) {
-    for (VarSym *v = s->vars; v != NULL; v = v->next) {
-      if (strcmp(v->name, name) == 0) {
-        return v;
-      }
+    Tree_Node *node = Search(s->vars, (char *)name);
+    if(node != NULL){
+      return (VarSym *)node->data;
     }
   }
   return NULL;
 }
 
 void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
-  if (FindVarInCurScope(ctx, name) != NULL) {
-    ThrowError(ERR_REDEFINED);
-  }
   VarSym *v = (VarSym *)malloc(sizeof(VarSym));
   MallocChecker(v);
   v->name = name;
   v->type = type;
   v->isVar = isVar;
-  v->next = ctx->curScope->vars;
-  ctx->curScope->vars = v;
+  TreeStatus status = Tree_OK;
+  ctx->curScope->vars = InsertNode(ctx->curScope->vars, v, name, &status);
+  if(status == Tree_DUPLICATE){
+    free(v);
+    ThrowError(ERR_REDEFINED);
+
+  }else if(status == Tree_MEM_ERR){
+    free(v);
+    ThrowError(ERR_INTERNAL);
+  }
 }
 
 FuncSym *FindUserFunction(SemContext *ctx, const char *name) {
-  for (FuncSym *f = ctx->functions; f != NULL; f = f->next) {
-    if (strcmp(f->name, name) == 0) {
-      return f;
-    }
-  }
-  return NULL;
+  Tree_Node *node = Search(ctx->functions, (char *)name);
+  return (node != NULL) ? (FuncSym *)node->data : NULL;
 }
 
 void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
              DataType returnType, bool isAnyParam) {
-  if (FindUserFunction(ctx, name) != NULL) {
-    ThrowError(ERR_REDEFINED);
-  }
   FuncSym *f = (FuncSym *)malloc(sizeof(FuncSym));
   MallocChecker(f);
   f->name = name;
@@ -129,17 +121,19 @@ void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
   f->paramCount = paramCount;
   f->returnType = returnType;
   f->isAnyParam = isAnyParam;
-  f->next = ctx->functions;
-  ctx->functions = f;
+  TreeStatus status = Tree_OK;
+  ctx->functions = InsertNode(ctx->functions, f, name, &status);
+  if (status == Tree_DUPLICATE) {
+    free(f);
+    ThrowError(ERR_REDEFINED);
+  } else if (status == Tree_MEM_ERR) {
+    free(f);
+    ThrowError(ERR_INTERNAL);
+  }
 }
 
 void FreeFunctions(SemContext *ctx) {
-  FuncSym *f = ctx->functions;
-  while (f != NULL) {
-    FuncSym *next = f->next;
-    free(f);
-    f = next;
-  }
+  DestroyTree(ctx->functions, FreeFuncSym);
   ctx->functions = NULL;
 }
 

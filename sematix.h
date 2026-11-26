@@ -14,6 +14,7 @@
 
 #include "codeStruct.h"
 #include "structure.h"
+#include "bintree.h"
 
 #ifndef SEMATIX // Nedefinuj soubor znova, pokud uz je definovan
 #define SEMATIX
@@ -22,12 +23,10 @@ typedef struct VarSym {
   char *name;
   DataType type;
   bool isVar; // Bude true kdyz je variable bude false kdyz value nebo parametr
-              // funkce
-  struct VarSym *next;
 } VarSym;
 
 typedef struct Scope {
-  VarSym *vars;         // Seznam promennych v bloku
+  Tree_Node *vars;        // Seznam promennych v bloku
   struct Scope *parent; // Ukazatel na nadrazeny blok treba z if do funkce
 } Scope;
 
@@ -37,11 +36,10 @@ typedef struct FuncSym {
   int paramCount;
   DataType returnType;
   bool isAnyParam; // Bude true kdyz pro print a pro toStr
-  struct FuncSym *next;
 } FuncSym;
 
 typedef struct {
-  FuncSym *functions;       // Vsechny funkce programu
+  Tree_Node *functions;       // Vsechny funkce programu
   Scope *curScope;          // Aktualni blok
   DataType curFuncRetType;  // Vracejici typ funkce kterou aktualne kontrolujeme
   bool curFuncExplicitUnit; // Ma aktualni funkce v hlavicce napsano ": Unit"?
