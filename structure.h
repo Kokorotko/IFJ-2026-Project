@@ -7,6 +7,8 @@
 #ifndef STRUCTURE_H // Nedefinuj soubor znova, pokud uz je definovan
 #define STRUCTURE_H
 
+#include <stdbool.h>
+
 typedef enum {
   // speciální (End of File, End Of Line, )
   T_EOF,
@@ -15,7 +17,7 @@ typedef enum {
   T_BLOCKEND,
   T_INDENDATION,
   T_ERROR,
-  T_SKIP, // Syntax preskoci tento Token
+  T_SKIP, // Syntax preskoci tento Token  
   // literály a identifikátor
   T_ID,         // identifikátor
   T_INT_LIT,    // čislo int
@@ -38,6 +40,9 @@ typedef enum {
   KW_STRING,
   KW_UNIT,
   // operátory a interpunkce
+  T_OR, //Boolthen
+  T_AND, //Boolthen
+  T_NOT, //Boolthen
   T_PLUS,         // +  sčítání, konkatenace řetězců, unární plus
   T_MINUS,        // -  odčítání, unární mínus
   T_MUL,          // *  násobení
@@ -71,7 +76,9 @@ typedef enum {
   KW_FOR,
   KW_LIST,
   KW_MATCH,
-  KW_TYPE
+  KW_TYPE,
+  KW_TRUE, //Boolthen
+  KW_FALSE //Boolthen
 } TokType;
 
 typedef struct {
@@ -81,6 +88,7 @@ typedef struct {
     int i;
     double d;
     char *s;
+    bool b;
   } val; // Vybírá se z jednoho (long long, double or char)
 } Token;
 

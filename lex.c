@@ -45,7 +45,9 @@ static const Keyword_Check Keyword[] = // Keywords list
      {"for", 3, KW_FOR},
      {"List", 4, KW_LIST},
      {"match", 5, KW_MATCH},
-     {"type", 4, KW_TYPE}};
+     {"type", 4, KW_TYPE},
+     {"true", 4, KW_TRUE},
+     {"false", 5, KW_FALSE}};
 
 typedef enum // tohle je pro menší větší rovná se a kombinace
 {
@@ -64,6 +66,8 @@ typedef enum // tohle je pro menší větší rovná se a kombinace
   STATE_NEQ,    // stav !=
   STATE_COMMA,  // stav ,
   STATE_COLON,  // stav :
+  STATE_AND,    // stav &
+  STATE_OR,     // stav |
   STATE_SEMI    // stav ;
 } ScannerState; // specialní znaky
 
@@ -715,6 +719,14 @@ Token TokenGiver() // thsi shti...
       returnToken.type = KeywordOrIdentifier(buffer);
       returnToken.line = lineNumber;
       returnToken.val.s = NULL;
+      if (returnToken.type == KW_TRUE) // BOOLTHEN
+      {
+        returnToken.val.b = true;
+      }
+      if (returnToken.type == KW_FALSE)
+      {
+        returnToken.val.b = false;
+      }
       if (returnToken.type == KW_IMPORT)
       {
         free(buffer);
@@ -1202,7 +1214,8 @@ Token TokenGiver() // thsi shti...
   /*i nomine patris et filii et spiritus sancti */
   if (c == '=' || c == '<' || c == '>' || c == '+' || c == '-' || c == '*' ||
       c == '/' || c == '!' || c == ',' || c == ':' ||
-      c == ';') // podmínka pro specialní znaky, od nich se odvíjí stavy pro
+      c == ';' || c == '&' ||
+      c == '|') // podmínka pro specialní znaky, od nich se odvíjí stavy pro
                 // tokeny
   {
     ScannerState state = STATE_START;
@@ -1239,6 +1252,12 @@ Token TokenGiver() // thsi shti...
         case '!':
           state = STATE_NOT;
           break;
+        case '&':
+          state = STATE_AND;
+          break;
+        case '|':
+          state = STATE_OR;
+          break;
         case ',':
           state = STATE_COMMA;
           break;
@@ -1268,9 +1287,48 @@ Token TokenGiver() // thsi shti...
           state = STATE_NEQ;
           break;
         }
-        free(buffer);
-        ThrowError(ERR_LEX);
-        break;
+        // samotný '!' (BOOLTHEN), načtený znak patří dalšímu tokenu
+        if (c != EOF && ungetc(c, mainFile) == EOF)
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+        }
+        returnToken.type = T_NOT;
+        goto operator_done;
+#pragma endregion
+#pragma region And_Or_State
+      case STATE_AND:
+      {
+        c = fgetc(mainFile);
+        if (c == EOF && ferror(mainFile))
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+        }
+        if (c != '&') 
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        returnToken.type = T_AND;
+        goto operator_done;
+      }
+      case STATE_OR:
+      {
+        c = fgetc(mainFile);
+        if (c == EOF && ferror(mainFile))
+        {
+          free(buffer);
+          ThrowError(ERR_INTERNAL);
+        }
+        if (c != '|') 
+        {
+          free(buffer);
+          ThrowError(ERR_LEX);
+        }
+        returnToken.type = T_OR;
+        goto operator_done;
+      }
 #pragma endregion
 #pragma region Rest of it
       case STATE_PLUS:

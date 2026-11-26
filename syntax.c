@@ -31,23 +31,24 @@ static int currentIndendationLevel = 0; // global počet odsazení
 #define X 'x' // '·'  chyba
 #define F 'f' // hotovo ($ vs $)
 #define $ '$' // End symbol
-#define P_TABLE_SIZE 9
+#define P_TABLE_SIZE 11
 #define TABLE_MAX_RULE_SIZE 3
 
 /// @brief LL Tabulka
-// AI: Vygeneruj mi 2D tabulku v C podle téhle SA tabulky (*SA tabulka z
-// dokumentace)
+// AI: Vygeneruj mi 2D tabulku v C podle téhle SA tabulky (*SA tabulka z dokumentace)
 static const char p_Table[P_TABLE_SIZE][P_TABLE_SIZE] = {
-    //            -u  */  +-  rel eq  (   )   i   $
-    /* -u   */ {S, R, R, R, R, S, R, S, R},
-    /* * /  */ {S, R, R, R, R, S, R, S, R},
-    /* +-   */ {S, S, R, R, R, S, R, S, R},
-    /* rel  */ {S, S, S, X, R, S, R, S, R},
-    /* ==   */ {S, S, S, S, X, S, R, S, R},
-    /* (    */ {S, S, S, S, S, S, E, S, X},
-    /* )    */ {X, R, R, R, R, X, R, X, R},
-    /* i    */ {X, R, R, R, R, X, R, X, R},
-    /* $    */ {S, S, S, S, S, S, X, S, F},
+    //       -u  */  +-  rel eq &&  || (   )   i   $
+    /* u   */ {S,R,R,R,R,R,R,S,R,S,R},
+    /* //  */ {S,R,R,R,R,R,R,S,R,S,R},
+    /* +-  */ {S,S,R,R,R,R,R,S,R,S,R},
+    /* rel */ {S,S,S,X,R,R,R,S,R,S,R},
+    /* eq  */ {S,S,S,S,X,R,R,S,R,S,R},
+    /* &&  */ {S,S,S,S,S,R,R,S,R,S,R},
+    /* ||  */ {S,S,S,S,S,S,R,S,R,S,R},
+    /* (   */ {S,S,S,S,S,S,S,S,E,S,X},
+    /* )   */ {X,R,R,R,R,R,R,X,R,X,R},
+    /* i   */ {X,R,R,R,R,R,R,X,R,X,R},
+    /* $   */ {S,S,S,S,S,S,S,S,X,S,F},
     // S == Shift, R == Reduce, E == Equals, X == Unreachable syntax, F ==
     // Finito
 };
@@ -136,6 +137,11 @@ DataType ExpectDataType() {
     Expect(KW_STRING);
     return DT_STRING;
   }
+  case KW_BOOL:
+  {
+    Expect(KW_BOOL);
+    return DT_BOOL;
+  }
   case KW_UNIT: {
     Expect(KW_UNIT);
     return DT_UNIT;
@@ -160,17 +166,19 @@ Statement *ParseIf() {
   s->data.ST_if.condition = ParseExpression(); //(sum)
   Expect(KW_THEN);
   ExpectEndOfLine();
-  s->data.ST_if.then = ParseBlock(indendation); // BLOCK
-
-  if (currentIndendationLevel !=
-      indendation) // If a Else musí být na stejném odsazení
+  s->data.ST_if.then = ParseBlock(indendation);
+  if (token.type == KW_ELSE && currentIndendationLevel == indendation) 
   {
-    ErrorHandlingSyntax(ERR_SYNTAX, token);
-  }
-
-  Expect(KW_ELSE);
-  ExpectEndOfLine();
-  s->data.ST_if.els = ParseBlock(indendation); // BLOCK
+    Expect(KW_ELSE);
+    if (token.type == KW_IF) {  // else if => else { if ... }
+      Block *b = NewBlock();
+      BlockAppend(b, ParseIf());
+      s->data.ST_if.els = b;
+    } else {
+      ExpectEndOfLine();
+      s->data.ST_if.els = ParseBlock(indendation);
+    }
+  } 
   return s;
 }
 
@@ -271,9 +279,10 @@ Expression *ParseExpressionOrCall() {
     return ParseExpression();
   } else if (token.type == T_DOUBLE_LIT || token.type == T_INT_LIT ||
              token.type == T_STRING_LIT || token.type == T_LPAREN ||
-             token.type == T_MINUS) {
+             token.type == T_MINUS|| token.type == KW_TRUE || token.type == KW_FALSE || token.type == T_NOT) {
     return ParseExpression();
-  } else {
+  } else
+  {
     ErrorHandlingSyntax(ERR_SYNTAX, token);
   }
   return NULL;
@@ -328,6 +337,9 @@ FuncDef *ParseDefFunction() {
   case T_STRING_LIT:
   case T_LPAREN:
   case T_MINUS: // foo() = výraz-nebo-volání
+  case KW_TRUE:
+  case KW_FALSE:
+  case T_NOT:
   {
     Statement *s = NewStatement(ST_EXPR);
     s->data.expression = ParseExpressionOrCall();
@@ -512,14 +524,14 @@ Expression *ParseExpression() {
 }
 
 /// @brief Nastaví hloubku () a previousWasOperand
-/// @param token Typ tokenu
-void UpdateState(TokType token) {
+/// @param tokType Typ tokenu
+void UpdateState(TokType tokType) {
   previousWasOperand =
-      (token == T_INT_LIT || token == T_DOUBLE_LIT || token == T_STRING_LIT ||
-       token == T_ID || token == T_RPAREN);
-  if (token == T_LPAREN)
+      (tokType == T_INT_LIT || tokType == T_DOUBLE_LIT || tokType == T_STRING_LIT ||
+       tokType == T_ID || tokType == T_RPAREN || tokType == KW_TRUE || tokType == KW_FALSE);
+  if (tokType == T_LPAREN)
     parenDepth++;
-  else if (token == T_RPAREN)
+  else if (tokType == T_RPAREN)
     parenDepth--;
 }
 
@@ -539,6 +551,13 @@ Expression *ExpressionTransform(StackItem *item) {
   case T_INT_LIT: {
     e = NewExpression(E_INT);
     e->data.intValue = item->token.val.i;
+    break;
+  }
+  case KW_TRUE: //misto KW_BOOL pro BOOLTHEN
+  case KW_FALSE:
+  {
+    e = NewExpression(E_BOOL);
+    e->data.boolValue = item->token.val.b;
     break;
   }
   case T_DOUBLE_LIT: {
@@ -608,6 +627,20 @@ bool ReduceByRule(StackItem *items, int lenght, StackItem *out) {
     out->e->data.unitary = items[0].e;
     return true;
   }
+
+  // E → !E
+  if (lenght == 2 && items[1].token.type == T_NOT &&
+      items[0].token.type == P_NONTERM) {
+    if (items[1].token.type != T_NOT ||
+        items[0].token.type != P_NONTERM) // Kontrola
+    {
+      return false;
+    }
+    out->e = NewExpression(E_UNARY);
+    out->e->operation = T_NOT;
+    out->e->data.unitary = items[0].e;
+    return true;
+  }
   return false; // Rule not found
 }
 
@@ -626,6 +659,8 @@ bool IsBinaryOperator(TokType token) {
   case T_GE:
   case T_EQ:
   case T_NEQ:
+  case T_AND:
+  case T_OR:
     return true;
   default:
     return false;
@@ -641,6 +676,8 @@ bool IsTerm(TokType token) {
   case T_DOUBLE_LIT:
   case T_STRING_LIT:
   case T_ID:
+  case KW_TRUE:
+  case KW_FALSE:
     return true;
   default:
     return false;
@@ -691,6 +728,8 @@ int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput) {
   }
   case P_UMINUS:
     return 0;
+  case T_NOT:
+    return 0;
   case T_PLUS:
     return 2;
   case T_MUL:
@@ -709,27 +748,31 @@ int PTableIndexFinder_3000(TokType tokenType, bool isIndexInput) {
     return 4;
   case T_NEQ:
     return 4;
-  case T_LPAREN:
+  case T_AND:
     return 5;
+  case T_OR:
+    return 6;
+  case T_LPAREN:
+    return 7;
   case T_RPAREN: {
     if (parenDepth == 0 && isIndexInput)
-      return 8; // první je ) pro vstupní
-    return 6;
+      return 10; // první je ) pro vstupní
+    return 8;
   }
   // Operand
   case T_INT_LIT:
-    return 7;
   case T_DOUBLE_LIT:
-    return 7;
   case T_STRING_LIT:
-    return 7;
   case T_ID:
-    return 7;
+    return 9;
+  case KW_TRUE:
+    return 9;
+  case KW_FALSE:
+    return 9;
   // Operand end
   case T_ENDSYMBOL:
-    return 8;
   default:
-    return 8; //(EOF a další), vrací endSymbol
+    return 10; //(EOF a další), vrací endSymbol
   }
 }
 
@@ -784,6 +827,9 @@ Statement *ParseLine() {
   case T_STRING_LIT:
   case T_LPAREN:
   case T_MINUS: // Samostatně stojící výraz
+  case KW_TRUE:
+  case KW_FALSE:
+  case T_NOT:
   {
     s = NewStatement(ST_EXPR);
     s->data.expression = ParseExpression();

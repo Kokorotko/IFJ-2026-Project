@@ -128,6 +128,17 @@ void GenBuiltinCall(Expression *e) {
       Emit("POPS GF@$tmp1");
       Emit("PUSHS string@()");
       break;
+    case DT_BOOL: { // pro bool neexistuje konverzní instrukce
+      int id = labelCounter++;
+      Emit("PUSHS bool@true");
+      Emit("JUMPIFEQS $bool_true_%d", id);
+      Emit("PUSHS string@false");
+      Emit("JUMP $bool_end_%d", id);
+      Emit("LABEL $bool_true_%d", id);
+      Emit("PUSHS string@true");
+      Emit("LABEL $bool_end_%d", id);
+      break;
+    }
     default: // String zůstává
       break;
     }
@@ -259,12 +270,29 @@ void GenExpr(Expression *e) {
       // * -1 místo 0 - x, aby fungovalo i -0.0
       Emit(e->resultType == DT_DOUBLE ? "PUSHS float@-0x1p+0" : "PUSHS int@-1");
       Emit("MULS");
+    } else if (e->operation == T_NOT) {
+      Emit("NOTS");
     }
     break;
 
   case E_BIN: {
     Expression *l = e->data.binary.left;
     Expression *r = e->data.binary.right;
+    if (e->operation == T_AND || e->operation == T_OR) {
+      // zkratové vyhodnocení (ANDS/ORS by vyhodnotily obě strany):
+      // && skončí hned při levém false, || při levém true
+      const char *shortVal = (e->operation == T_AND) ? "false" : "true";
+      int id = labelCounter++;
+      GenExpr(l);
+      Emit("PUSHS bool@%s", shortVal);
+      Emit("JUMPIFEQS $sc_short_%d", id);
+      GenExpr(r);
+      Emit("JUMP $sc_end_%d", id);
+      Emit("LABEL $sc_short_%d", id);
+      Emit("PUSHS bool@%s", shortVal);
+      Emit("LABEL $sc_end_%d", id);
+      break;
+    }
     GenExpr(l);
     ConvertTop(l->resultType,
                r->resultType); // levý Int, pravý Double -> převeď levý
@@ -278,7 +306,20 @@ void GenExpr(Expression *e) {
   case E_CALL:
     GenCall(e);
     break;
+
+  case E_BOOL:
+  {
+    if (e->data.boolValue)
+    {
+      Emit("PUSHS bool@%s", "true");
+    }
+    else 
+    {
+      Emit("PUSHS bool@%s", "false");
+    }
+    break;
   }
+}
 }
 
 /// @brief Návrat z funkce: hodnota (nebo nil) na zásobník + epilog
@@ -304,7 +345,6 @@ void GenReturn(Expression *value) {
 /// body),
 void HoistVars(Block *b) {
   MallocChecker(b);
-
   Statement *s = b->first;
   while (s != NULL) {
     switch (s->type) {
@@ -313,7 +353,9 @@ void HoistVars(Block *b) {
       break;
     case ST_IF:
       HoistVars(s->data.ST_if.then);
-      HoistVars(s->data.ST_if.els);
+      if (s->data.ST_if.els != NULL) { // if bez else BOOLTHEN
+        HoistVars(s->data.ST_if.els);
+      }
       break;
     case ST_WHILE:
       HoistVars(s->data.ST_while.body);
@@ -360,7 +402,9 @@ void GenStatement(Statement *s) {
     GenBlock(s->data.ST_if.then);
     Emit("JUMP $if_end_%d", id);
     Emit("LABEL $if_else_%d", id);
-    GenBlock(s->data.ST_if.els); // GenBlock zvládne NULL
+    if (s->data.ST_if.els != NULL) { // if bez else (BOOLTHEN)
+      GenBlock(s->data.ST_if.els);
+    }
     Emit("LABEL $if_end_%d", id);
     break;
   }
@@ -475,6 +519,7 @@ void GenBuiltins(void) {
   GenReadBuiltin("readLine", "string", "string@");
   GenReadBuiltin("readInt", "int", "int@0");
   GenReadBuiltin("readDouble", "float", "float@0x0p+0");
+  GenReadBuiltin("readBoolean", "bool", "bool@false");
 
   Emit("LABEL $builtin_ord");
   Emit("CREATEFRAME");
@@ -557,7 +602,7 @@ int GenProgram(FuncDef *innerProgram, FILE *output) {
   Emit("DEFVAR GF@$tmp2"); // pro CONCAT
   Emit("DEFVAR GF@$tmp3"); // pro PRINT
 
-  // vstupní bod: zavolej @main a skonči
+  //zavolej @main a skonči
   FuncDef *f = innerProgram;
   while (f != NULL && !f->isMain) {
     f = f->next;

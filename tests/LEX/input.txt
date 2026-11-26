@@ -26,3 +26,9 @@ slovo
 slovo
 
 sloo
+// BOOLTHEN
+val flag = true && !false || x != y
+if !flag && (a == b) then
+@main def f(): Unit = print(false)
+trueish falsey True FALSE _true
+a!=b a !=b !!x !(y)

@@ -57,6 +57,22 @@ int main(void)
         {
             printf(", indent: %d", token.val.i);
         }
+        else if (token.type == KW_TRUE || token.type == KW_FALSE)
+        {
+            printf(", hodnota: %s", token.val.b ? "true" : "false");
+        }
+        else if (token.type == T_NOT)
+        {
+            printf(", operator: !");
+        }
+        else if (token.type == T_AND)
+        {
+            printf(", operator: &&");
+        }
+        else if (token.type == T_OR)
+        {
+            printf(", operator: ||");
+        }
 
         putchar('\n');
 

@@ -57,3 +57,4 @@ dkms.conf
 .vscode/c_cpp_properties.json
 ifj26
 tests/CODE.code
+tests/CODEComplex.code

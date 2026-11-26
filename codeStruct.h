@@ -37,7 +37,8 @@ typedef enum {
   E_VAR, // name
   E_UNARY,
   E_BIN,
-  E_CALL          // call
+  E_CALL,
+  E_BOOL          // call
 } ExpressionEnum; // TokType pro strukturu
 
 /// @brief Vybírá jaký typ je statement
@@ -62,6 +63,7 @@ typedef struct Expression {
     double doubleValue;
     char *stringValue;
     char *name;
+    bool boolValue;
 
     struct // Strom
     {
