@@ -9,7 +9,8 @@
 
 #include <stdbool.h>
 
-typedef enum {
+typedef enum
+{
   // speciální (End of File, End Of Line, )
   T_EOF,
   T_EOL,
@@ -17,7 +18,7 @@ typedef enum {
   T_BLOCKEND,
   T_INDENDATION,
   T_ERROR,
-  T_SKIP, // Syntax preskoci tento Token  
+  T_SKIP, // Syntax preskoci tento Token
   // literály a identifikátor
   T_ID,         // identifikátor
   T_INT_LIT,    // čislo int
@@ -40,9 +41,9 @@ typedef enum {
   KW_STRING,
   KW_UNIT,
   // operátory a interpunkce
-  T_OR, //Boolthen
-  T_AND, //Boolthen
-  T_NOT, //Boolthen
+  T_OR,           // Boolthen
+  T_AND,          // Boolthen
+  T_NOT,          // Boolthen
   T_PLUS,         // +  sčítání, konkatenace řetězců, unární plus
   T_MINUS,        // -  odčítání, unární mínus
   T_MUL,          // *  násobení
@@ -77,32 +78,35 @@ typedef enum {
   KW_LIST,
   KW_MATCH,
   KW_TYPE,
-  KW_TRUE, //Boolthen
-  KW_FALSE //Boolthen
+  KW_TRUE, // Boolthen
+  KW_FALSE // Boolthen
 } TokType;
 
-typedef struct {
+typedef struct
+{
   TokType type;
   int line;
-  union {
+  union
+  {
     int i;
     double d;
     char *s;
     bool b;
-  } val; // Vybírá se z jednoho (long long, double or char)
+  } val; // Vybírá se z jednoho (Int, double or char)
 } Token;
 
-typedef enum {
-  ERR_OK = 0,     // Liv gud :)
-  ERR_LEX = 1,    // chyba lexikální analýzy (lexém, komentář, odsazení)
-  ERR_SYNTAX = 2, // chyba syntaktické analýzy (syntaxe, prolog, odsazené bloky)
+typedef enum
+{
+  ERR_OK = 0,        // Liv gud :)
+  ERR_LEX = 1,       // chyba lexikální analýzy (lexém, komentář, odsazení)
+  ERR_SYNTAX = 2,    // chyba syntaktické analýzy (syntaxe, prolog, odsazené bloky)
   ERR_UNDEFINED = 3, // nedefinovaná funkce/proměnná/typ, chybí @main
   ERR_REDEFINED = 4, // redefinice funkce/proměnné/typu, více @main
   ERR_ARGS = 5,      // špatný počet/typ argumentů, parametr u @main
   ERR_TYPE = 6,      // typová kompatibilita, odvození typu, návratový typ
   ERR_ASSIGN = 7,    // zápis do val nebo do parametru funkce
   ERR_OTHER_SEM =
-      10, // ostatní sémantické chyby (nepovolený return, nulový krok...)
+      10,           // ostatní sémantické chyby (nepovolený return, nulový krok...)
   ERR_RUNTIME = 40, // běhová chyba; překladač ji negeneruje, jen kód cílového
                     // programu (EXIT int@40)
   ERR_INTERNAL = 99 // interní chyba překladače (např. malloc)
