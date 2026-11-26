@@ -37,7 +37,8 @@ typedef enum {
   E_VAR, // name
   E_UNARY,
   E_BIN,
-  E_CALL          // call
+  E_CALL,
+  E_BOOL          // call
 } ExpressionEnum; // TokType pro strukturu
 
 /// @brief Vybírá jaký typ je statement
@@ -56,12 +57,14 @@ typedef struct Expression {
   TokType operation;   // for unary/binary
   DataType resultType; // Data (Naplnuje Sematika)
   int line;
+  int varId;
   union // Union == Choose one of these
   {
     int intValue;
     double doubleValue;
     char *stringValue;
     char *name;
+    bool boolValue;
 
     struct // Strom
     {
@@ -99,6 +102,7 @@ struct Statement {
     {
       char *name;
       bool isVar;
+      int id;
       DataType type; // INT, DOUBLE, STRING
       Expression *init;
     } ST_vardef;
@@ -106,6 +110,8 @@ struct Statement {
     struct // assign
     {
       char *name;
+      int id;
+      DataType type; // INT, DOUBLE, STRING
       Expression *value;
     } ST_assign;
 

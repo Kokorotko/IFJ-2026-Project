@@ -1,4 +1,4 @@
-import ifj26.*
+import      ifj26.*
 def factorial(n: Int): Int =
 var result = 1
 var i: Int = n // uvedení typu je nepovinné
@@ -17,12 +17,22 @@ void function(
 )
 /*
 kment
+
+
+
+
 */
-
-
-
+"""
+slova
+ """
 
 slovo
 slovo
 
 sloo
+// BOOLTHEN
+val flag = true && !false || x != y
+if !flag && (a == b) then
+@main def f(): Unit = print(false)
+trueish falsey True FALSE _true
+a!=b a !=b !!x !(y)

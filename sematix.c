@@ -57,17 +57,16 @@ void PushScope(SemContext *ctx) {
   ctx->curScope = newScope;
 }
 
+static void FreeVarSym(void *data) { free(data); }
+
+static void FreeFuncSym(void *data) { free(data); }
+
 void ScopePop(SemContext *ctx) {
   if (ctx->curScope == NULL) {
     return;
   }
   Scope *old = ctx->curScope;
-  VarSym *v = old->vars;
-  while (v != NULL) {
-    VarSym *next = v->next;
-    free(v);
-    v = next;
-  }
+  DestroyTree(old->vars, FreeVarSym);
   ctx->curScope = old->parent; // Vratime se o uroven vys
   free(old);
 }
@@ -76,52 +75,48 @@ VarSym *FindVarInCurScope(SemContext *ctx, const char *name) {
   if (ctx->curScope == NULL) {
     return NULL;
   }
-  for (VarSym *v = ctx->curScope->vars; v != NULL; v = v->next) {
-    if (strcmp(v->name, name) == 0) {
-      return v;
-    }
-  }
-  return NULL;
+  Tree_Node *node = Search(ctx->curScope->vars, (char *)name);
+  return (node != NULL) ? (VarSym *)node->data : NULL;
 }
 
 VarSym *FindVar(SemContext *ctx, const char *name) {
   for (Scope *s = ctx->curScope; s != NULL; s = s->parent) {
-    for (VarSym *v = s->vars; v != NULL; v = v->next) {
-      if (strcmp(v->name, name) == 0) {
-        return v;
-      }
+    Tree_Node *node = Search(s->vars, (char *)name);
+    if (node != NULL) {
+      return (VarSym *)node->data;
     }
   }
   return NULL;
 }
 
-void AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
-  if (FindVarInCurScope(ctx, name) != NULL) {
-    ThrowError(ERR_REDEFINED);
-  }
+int AddVar(SemContext *ctx, char *name, DataType type, bool isVar) {
   VarSym *v = (VarSym *)malloc(sizeof(VarSym));
   MallocChecker(v);
   v->name = name;
   v->type = type;
   v->isVar = isVar;
-  v->next = ctx->curScope->vars;
-  ctx->curScope->vars = v;
+  v->id = ctx->nextVarId++;
+  int tempId = v->id;
+  TreeStatus status = Tree_OK;
+  ctx->curScope->vars = InsertNode(ctx->curScope->vars, v, name, &status);
+  if (status == Tree_DUPLICATE) {
+    free(v);
+    ThrowError(ERR_REDEFINED);
+
+  } else if (status == Tree_MEM_ERR) {
+    free(v);
+    ThrowError(ERR_INTERNAL);
+  }
+  return tempId;
 }
 
 FuncSym *FindUserFunction(SemContext *ctx, const char *name) {
-  for (FuncSym *f = ctx->functions; f != NULL; f = f->next) {
-    if (strcmp(f->name, name) == 0) {
-      return f;
-    }
-  }
-  return NULL;
+  Tree_Node *node = Search(ctx->functions, (char *)name);
+  return (node != NULL) ? (FuncSym *)node->data : NULL;
 }
 
 void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
              DataType returnType, bool isAnyParam) {
-  if (FindUserFunction(ctx, name) != NULL) {
-    ThrowError(ERR_REDEFINED);
-  }
   FuncSym *f = (FuncSym *)malloc(sizeof(FuncSym));
   MallocChecker(f);
   f->name = name;
@@ -129,17 +124,19 @@ void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
   f->paramCount = paramCount;
   f->returnType = returnType;
   f->isAnyParam = isAnyParam;
-  f->next = ctx->functions;
-  ctx->functions = f;
+  TreeStatus status = Tree_OK;
+  ctx->functions = InsertNode(ctx->functions, f, name, &status);
+  if (status == Tree_DUPLICATE) {
+    free(f);
+    ThrowError(ERR_REDEFINED);
+  } else if (status == Tree_MEM_ERR) {
+    free(f);
+    ThrowError(ERR_INTERNAL);
+  }
 }
 
 void FreeFunctions(SemContext *ctx) {
-  FuncSym *f = ctx->functions;
-  while (f != NULL) {
-    FuncSym *next = f->next;
-    free(f);
-    f = next;
-  }
+  DestroyTree(ctx->functions, FreeFuncSym);
   ctx->functions = NULL;
 }
 
@@ -154,6 +151,7 @@ void RegisterBuiltins(SemContext *ctx) {
   AddFunc(ctx, "readLine", NULL, 0, DT_STRING, false);
   AddFunc(ctx, "readInt", NULL, 0, DT_INT, false);
   AddFunc(ctx, "readDouble", NULL, 0, DT_DOUBLE, false);
+  AddFunc(ctx, "readBoolean", NULL, 0, DT_BOOL, false);
   AddFunc(ctx, "toStr", NULL, 1, DT_STRING, true);
   AddFunc(ctx, "toInt", p_toInt, 1, DT_INT, false);
   AddFunc(ctx, "strLength", p_strLength, 1, DT_INT, false);
@@ -179,16 +177,27 @@ DataType analyzeExpression(SemContext *ctx, Expression *exp) {
   case E_UNIT:
     exp->resultType = DT_UNIT;
     return DT_UNIT;
+  case E_BOOL:
+    exp->resultType = DT_BOOL;
+    return DT_BOOL;
   case E_VAR: { // aby WC23 nehazel warning
     VarSym *v = FindVar(ctx, exp->data.name);
     if (v == NULL) {
       ThrowError(ERR_UNDEFINED);
     }
+    exp->varId = v->id; // přenos ID
     exp->resultType = v->type;
     return v->type;
   }
   case E_UNARY: {
     DataType t = analyzeExpression(ctx, exp->data.unitary);
+    if (exp->operation == T_NOT) {
+      if (t != DT_BOOL) {
+        ThrowError(ERR_TYPE);
+      }
+      exp->resultType = DT_BOOL;
+      return DT_BOOL;
+    }
     if (exp->operation == T_MINUS || exp->operation == P_UMINUS ||
         exp->operation == T_PLUS) {
       if (IsNumeric(t) == false) {
@@ -247,6 +256,14 @@ DataType analyzeExpression(SemContext *ctx, Expression *exp) {
       }
       ThrowError(ERR_TYPE);
       return DT_NONE;
+    case T_AND:
+    case T_OR:
+      if (leftType == DT_BOOL && rightType == DT_BOOL) {
+        exp->resultType = DT_BOOL;
+        return DT_BOOL;
+      }
+      ThrowError(ERR_TYPE);
+      return DT_NONE;
     default:
       ThrowError(ERR_TYPE);
       return DT_NONE;
@@ -274,7 +291,7 @@ DataType analyzeExpression(SemContext *ctx, Expression *exp) {
     }
     for (int i = 0; i < exp->data.call.argc; i++) {
       DataType argType = analyzeExpression(ctx, exp->data.call.args[i]);
-      if (argType == DT_BOOL || argType == DT_NONE) {
+      if (argType == DT_NONE) {
         ThrowError(ERR_ARGS);
       }
       if (!f->isAnyParam && !isTypeCompatible(f->params[i].type, argType)) {
@@ -303,9 +320,6 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
     if (sta->data.ST_vardef.init != NULL) {
       initType = analyzeExpression(ctx, sta->data.ST_vardef.init);
     }
-    if (declaredType == DT_BOOL || initType == DT_BOOL) {
-      ThrowError(ERR_TYPE);
-    }
     if (declaredType == DT_NONE) {
       if (initType == DT_NONE) {
         ThrowError(ERR_TYPE);
@@ -316,8 +330,8 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
                !isTypeCompatible(declaredType, initType)) {
       ThrowError(ERR_TYPE);
     }
-    AddVar(ctx, sta->data.ST_vardef.name, declaredType,
-           sta->data.ST_vardef.isVar);
+    sta->data.ST_vardef.id = AddVar(ctx, sta->data.ST_vardef.name, declaredType,
+                                    sta->data.ST_vardef.isVar);
     return DT_UNIT;
   }
   case ST_ASSIGN: {
@@ -328,8 +342,10 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
     if (v->isVar == false) {
       ThrowError(ERR_ASSIGN);
     }
+    sta->data.ST_assign.id = v->id;
+    sta->data.ST_assign.type = v->type;
     DataType valType = analyzeExpression(ctx, sta->data.ST_assign.value);
-    if (valType == DT_BOOL || !isTypeCompatible(v->type, valType)) {
+    if (!isTypeCompatible(v->type, valType)) {
       ThrowError(ERR_TYPE);
     }
     return DT_UNIT;
@@ -388,9 +404,6 @@ DataType analyzeStatement(SemContext *ctx, Statement *sta, bool *alwaysReturns,
       }
     } else {
       DataType retType = analyzeExpression(ctx, sta->data.retur);
-      if (retType == DT_BOOL) {
-        ThrowError(ERR_TYPE);
-      }
       if (!ctx->curFuncExplicitUnit &&
           !isTypeCompatible(ctx->curFuncRetType, retType)) {
         ThrowError(ERR_TYPE);
@@ -440,6 +453,8 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
   if (funcState[idx] != 0) {
     return;
   }
+  int savedVarId = ctx->nextVarId;
+  ctx->nextVarId = 0; // reset cislovani
   funcState[idx] = 1;
 
   Scope *savedScope = ctx->curScope;
@@ -454,9 +469,6 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
   PushScope(ctx);
 
   for (int i = 0; i < f->paramCount; i++) {
-    if (f->params[i].type == DT_BOOL) {
-      ThrowError(ERR_TYPE);
-    }
     AddVar(ctx, f->params[i].name, f->params[i].type, false);
   }
   bool alwaysReturns = false;
@@ -465,9 +477,6 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
   if (f->returnType == DT_NONE) {
     if (ctx->hasReturn) {
       ThrowError(ERR_TYPE); // Pri return musi byt navratovy typ explicitni
-    }
-    if (bodyType == DT_BOOL) {
-      ThrowError(ERR_TYPE);
     }
     f->returnType = bodyType;
     FuncSym *fs = FindUserFunction(ctx, f->name);
@@ -481,6 +490,7 @@ static void AnalyzeFunction(SemContext *ctx, FuncDef *f, int idx) {
   }
   ScopePop(ctx);
 
+  ctx->nextVarId = savedVarId; // vrácení hodnoty
   ctx->curScope = savedScope;
   ctx->curFuncRetType = savedRetType;
   ctx->curFuncExplicitUnit = savedExplicitUnit;

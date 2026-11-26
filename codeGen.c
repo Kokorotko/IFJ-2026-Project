@@ -17,12 +17,9 @@ static FILE *out = NULL;                // Output
 static FuncDef *program = NULL;         // AST strom
 static FuncDef *currentFunction = NULL; // funkce, kterou zrovna generujeme
 static int labelCounter = 0;            // cislovani pro if/while
-static int varCounter = 0;              // cislovani id ve funkcich
 static int genError = 0;                // errorHandling
 
-static VarEntry *scopeTop = NULL;
-
-// Claude, udělej mi printf ale do souboru (nakonec to je do stdout)
+// AI: Claude, udělej mi printf ale do souboru (nakonec to je do stdout)
 /// @brief printf pro jednu instrukci, přidá odsazení řádku
 void Emit(const char *message, ...) {
   va_list args; // list dalších argumentů
@@ -30,38 +27,6 @@ void Emit(const char *message, ...) {
   vfprintf(out, message, args); // file printf
   va_end(args);
   fputc('\n', out); // nastaví LF
-}
-
-/// @brief Přidá proměnnou do aktuálního scopu
-static void PushScope(const char *name, int id, DataType type) {
-  VarEntry *entry = malloc(sizeof(VarEntry));
-  MallocChecker(entry);
-  entry->name = name;
-  entry->id = id;
-  entry->type = type;
-  entry->next = scopeTop;
-  scopeTop = entry;
-}
-
-/// @brief Najde nejnovější proměnnou daného jména
-static VarEntry *LookupScope(const char *name) {
-  VarEntry *entry = scopeTop;
-  while (entry != NULL) {
-    if (strcmp(entry->name, name) == 0) {
-      return entry;
-    }
-    entry = entry->next;
-  }
-  return NULL;
-}
-
-/// @brief Zahodí všechny proměnné přidané po `mark` (konec bloku)
-static void RemoveScope(VarEntry *mark) {
-  while (scopeTop != mark) {
-    VarEntry *old = scopeTop;
-    scopeTop = old->next;
-    free(old);
-  }
 }
 
 /// @brief Najde uživatelskou funkci podle jména (NULL = vestavěná)
@@ -128,6 +93,17 @@ void GenBuiltinCall(Expression *e) {
       Emit("POPS GF@$tmp1");
       Emit("PUSHS string@()");
       break;
+    case DT_BOOL: { // pro bool neexistuje konverzní instrukce
+      int id = labelCounter++;
+      Emit("PUSHS bool@true");
+      Emit("JUMPIFEQS $bool_true_%d", id);
+      Emit("PUSHS string@false");
+      Emit("JUMP $bool_end_%d", id);
+      Emit("LABEL $bool_true_%d", id);
+      Emit("PUSHS string@true");
+      Emit("LABEL $bool_end_%d", id);
+      break;
+    }
     default: // String zůstává
       break;
     }
@@ -181,7 +157,7 @@ void GenBinaryOp(Expression *e) {
   switch (e->operation) {
   case T_PLUS:
     if (isString) {
-      // CONCAT nemá zásobníkovou verzi
+      // CONCAT nemá zásobníkovou verzi :(
       Emit("POPS GF@$tmp2");
       Emit("POPS GF@$tmp1");
       Emit("CONCAT GF@$tmp3 GF@$tmp1 GF@$tmp2");
@@ -246,9 +222,7 @@ void GenExpr(Expression *e) {
     break;
 
   case E_VAR: {
-    VarEntry *v = LookupScope(e->data.name);
-    MallocChecker(v);
-    Emit("PUSHS LF@%s$%d", v->name, v->id);
+    Emit("PUSHS LF@%s$%d", e->data.name, e->varId);
     break;
   }
 
@@ -259,12 +233,29 @@ void GenExpr(Expression *e) {
       // * -1 místo 0 - x, aby fungovalo i -0.0
       Emit(e->resultType == DT_DOUBLE ? "PUSHS float@-0x1p+0" : "PUSHS int@-1");
       Emit("MULS");
+    } else if (e->operation == T_NOT) {
+      Emit("NOTS");
     }
     break;
 
   case E_BIN: {
     Expression *l = e->data.binary.left;
     Expression *r = e->data.binary.right;
+    if (e->operation == T_AND || e->operation == T_OR) {
+      // zkratové vyhodnocení (ANDS/ORS by vyhodnotily obě strany):
+      // && skončí hned při levém false, || při levém true
+      const char *shortVal = (e->operation == T_AND) ? "false" : "true";
+      int id = labelCounter++;
+      GenExpr(l);
+      Emit("PUSHS bool@%s", shortVal);
+      Emit("JUMPIFEQS $sc_short_%d", id);
+      GenExpr(r);
+      Emit("JUMP $sc_end_%d", id);
+      Emit("LABEL $sc_short_%d", id);
+      Emit("PUSHS bool@%s", shortVal);
+      Emit("LABEL $sc_end_%d", id);
+      break;
+    }
     GenExpr(l);
     ConvertTop(l->resultType,
                r->resultType); // levý Int, pravý Double -> převeď levý
@@ -278,6 +269,15 @@ void GenExpr(Expression *e) {
   case E_CALL:
     GenCall(e);
     break;
+
+  case E_BOOL: {
+    if (e->data.boolValue) {
+      Emit("PUSHS bool@%s", "true");
+    } else {
+      Emit("PUSHS bool@%s", "false");
+    }
+    break;
+  }
   }
 }
 
@@ -300,23 +300,23 @@ void GenReturn(Expression *value) {
 }
 
 /// @brief Pre-pass: DEFVAR všech lokálních proměnných funkce (včetně vnořených
-/// bloků)  !musí procházet ve STEJNÉM pořadí jako GenStatement (then -> else,
-/// body),
-void HoistVars(Block *b) {
+/// bloků)
+void VarPreparation(Block *b) {
   MallocChecker(b);
-
   Statement *s = b->first;
   while (s != NULL) {
     switch (s->type) {
     case ST_VARDEF:
-      Emit("DEFVAR LF@%s$%d", s->data.ST_vardef.name, varCounter++);
+      Emit("DEFVAR LF@%s$%d", s->data.ST_vardef.name, s->data.ST_vardef.id);
       break;
     case ST_IF:
-      HoistVars(s->data.ST_if.then);
-      HoistVars(s->data.ST_if.els);
+      VarPreparation(s->data.ST_if.then);
+      if (s->data.ST_if.els != NULL) { // if bez else BOOLTHEN
+        VarPreparation(s->data.ST_if.els);
+      }
       break;
     case ST_WHILE:
-      HoistVars(s->data.ST_while.body);
+      VarPreparation(s->data.ST_while.body);
       break;
     default:
       break;
@@ -327,28 +327,21 @@ void HoistVars(Block *b) {
 
 /// @brief Generuje kod podle statementu
 /// @param s Pointer na statement
-
 void GenStatement(Statement *s) {
   switch (s->type) {
   case ST_VARDEF: {
     Expression *init = s->data.ST_vardef.init;
     DataType type = s->data.ST_vardef.type;
-    int id = varCounter++; // musí sedět s HoistVars
-
     GenExpr(init);
     ConvertTop(init->resultType, type);
-    // do scopu až PO init, aby `val x = x + 1` viselo na vnější x
-    PushScope(s->data.ST_vardef.name, id, type);
-    Emit("POPS LF@%s$%d", s->data.ST_vardef.name, id);
+    Emit("POPS LF@%s$%d", s->data.ST_vardef.name, s->data.ST_vardef.id);
     break;
   }
 
   case ST_ASSIGN: {
-    VarEntry *v = LookupScope(s->data.ST_assign.name);
-    MallocChecker(v); // reused :)
     GenExpr(s->data.ST_assign.value);
-    ConvertTop(s->data.ST_assign.value->resultType, v->type);
-    Emit("POPS LF@%s$%d", v->name, v->id);
+    ConvertTop(s->data.ST_assign.value->resultType, s->data.ST_assign.type);
+    Emit("POPS LF@%s$%d", s->data.ST_assign.name, s->data.ST_assign.id);
     break;
   }
 
@@ -360,7 +353,9 @@ void GenStatement(Statement *s) {
     GenBlock(s->data.ST_if.then);
     Emit("JUMP $if_end_%d", id);
     Emit("LABEL $if_else_%d", id);
-    GenBlock(s->data.ST_if.els); // GenBlock zvládne NULL
+    if (s->data.ST_if.els != NULL) { // if bez else (BOOLTHEN)
+      GenBlock(s->data.ST_if.els);
+    }
     Emit("LABEL $if_end_%d", id);
     break;
   }
@@ -393,13 +388,11 @@ void GenStatement(Statement *s) {
 void GenBlock(Block *b) {
   MallocChecker(b);
 
-  VarEntry *mark = scopeTop;
   Statement *s = b->first;
   while (s != NULL) {
     GenStatement(s);
     s = s->next;
   }
-  RemoveScope(mark);
 }
 
 /// @brief Generuje kod podle funkce
@@ -407,7 +400,6 @@ void GenBlock(Block *b) {
 
 void GenFunction(FuncDef *f) {
   currentFunction = f;
-  varCounter = 0;
 
   Emit("LABEL $fn_%s", f->name);
   Emit("CREATEFRAME");
@@ -420,15 +412,7 @@ void GenFunction(FuncDef *f) {
   for (int i = f->paramCount - 1; i >= 0; i--) {
     Emit("POPS LF@%s$%d", f->params[i].name, i);
   }
-  for (int i = 0; i < f->paramCount; i++) {
-    PushScope(f->params[i].name, i, f->params[i].type);
-  }
-
-  // DEFVAR všech lokálních proměnných, pak se počítadlo vrátí, aby GenStatement
-  // dostal stejná id
-  varCounter = f->paramCount;
-  HoistVars(f->body);
-  varCounter = f->paramCount;
+  VarPreparation(f->body);
 
   // tělo: poslední příkaz zapsaný přímo v bloku, pokud je to výraz, je
   // návratová hodnota
@@ -444,8 +428,6 @@ void GenFunction(FuncDef *f) {
   }
 
   GenReturn(lastExpr != NULL ? lastExpr->data.expression : NULL);
-
-  RemoveScope(NULL); // úklid scopu (parametry + zbytek)
 }
 
 /// @brief Vygeneruje builtin pro čtení: nil (EOF / chybný formát) -> výchozí
@@ -469,12 +451,12 @@ void GenReadBuiltin(const char *name, const char *type, const char *fallback) {
 }
 
 /// @brief Vestavěné funkce, které potřebují smyčku / ošetření chyb -> vlastní
-/// funkce v IFJcode26 Stejná konvence jako u uživatelských: argumenty na
-/// zásobníku zleva doprava, výsledek taky na zásobníku
+/// funkce v IFJcode26 Stejná konvence jako u uživatelských
 void GenBuiltins(void) {
   GenReadBuiltin("readLine", "string", "string@");
   GenReadBuiltin("readInt", "int", "int@0");
   GenReadBuiltin("readDouble", "float", "float@0x0p+0");
+  GenReadBuiltin("readBoolean", "bool", "bool@false");
 
   Emit("LABEL $builtin_ord");
   Emit("CREATEFRAME");
@@ -539,17 +521,16 @@ void GenBuiltins(void) {
   Emit("EXIT int@40");
 }
 
-/// @brief Vstupní bod generátoru: vygeneruje celý program v IFJcode26
+/// @brief Vygeneruje celý program v IFJcode26
 /// @param program AST po sémantické analýze
 /// @param output Kam se kód zapisuje (stdout)
-/// @return ERR_OK (0) nebo kód chyby (ERR_INTERNAL)
+/// @return Error kod
 int GenProgram(FuncDef *innerProgram, FILE *output) {
   out = output;
   program = innerProgram;
   currentFunction = NULL;
   labelCounter = 0;
   genError = 0;
-  scopeTop = NULL;
 
   Emit(".IFJcode26");
 
@@ -557,7 +538,7 @@ int GenProgram(FuncDef *innerProgram, FILE *output) {
   Emit("DEFVAR GF@$tmp2"); // pro CONCAT
   Emit("DEFVAR GF@$tmp3"); // pro PRINT
 
-  // vstupní bod: zavolej @main a skonči
+  // zavolej @main a skonči
   FuncDef *f = innerProgram;
   while (f != NULL && !f->isMain) {
     f = f->next;

@@ -15,6 +15,8 @@
 bool IsLetter(int c);
 bool IsIdentifierStart(int c);
 bool IsIdentifierPart(int c);
+bool IsDigit(int c);
+void SkipLineComment(FILE *mainFile);
 TokType KeywordOrIdentifier(const char *text);
 void TokenInicializator(FILE *file);
 Token TokenGiver();
