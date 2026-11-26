@@ -14,13 +14,14 @@
 
 #include "codeStruct.h"
 #include "structure.h"
-#include "bintree.h"
+#include "bst.h"
 
 #ifndef SEMATIX // Nedefinuj soubor znova, pokud uz je definovan
 #define SEMATIX
 
 typedef struct VarSym {
   char *name;
+  int id; //číslování pro codeGen
   DataType type;
   bool isVar; // Bude true kdyz je variable bude false kdyz value nebo parametr
 } VarSym;
@@ -42,6 +43,7 @@ typedef struct {
   Tree_Node *functions;       // Vsechny funkce programu
   Scope *curScope;          // Aktualni blok
   DataType curFuncRetType;  // Vracejici typ funkce kterou aktualne kontrolujeme
+  int nextVarId;
   bool curFuncExplicitUnit; // Ma aktualni funkce v hlavicce napsano ": Unit"?
   bool hasReturn;           // Ma funkce v sobe return?
 } SemContext;
@@ -57,7 +59,7 @@ void PushScope(SemContext *ctx);
 void ScopePop(SemContext *ctx);
 VarSym *FindVarInCurScope(SemContext *ctx, const char *name);
 VarSym *FindVar(SemContext *ctx, const char *name);
-void AddVar(SemContext *ctx, char *name, DataType type, bool isVar);
+int AddVar(SemContext *ctx, char *name, DataType type, bool isVar);
 FuncSym *FindUserFunction(SemContext *ctx, const char *name);
 void AddFunc(SemContext *ctx, char *name, Param *params, int paramCount,
              DataType returnType, bool isAnyParam);

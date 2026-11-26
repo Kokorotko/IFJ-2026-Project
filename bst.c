@@ -4,7 +4,7 @@
 // xkonvim00 - Martin Konvička
 // xklimat00 - Tomáš Klíma
 
-#include "bintree.h"
+#include "bst.h"
 #include <stdlib.h>
 #include <string.h>
 

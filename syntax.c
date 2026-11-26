@@ -955,6 +955,7 @@ Expression *NewExpression(ExpressionEnum type) {
   MallocChecker(ex);
   ex->line = token.line;
   ex->type = type;
+  ex->varId = -1;
   return ex;
 }
 
@@ -966,6 +967,8 @@ Statement *NewStatement(StatementEnum type) {
   MallocChecker(st);
   st->line = token.line;
   st->type = type;
+  st->data.ST_vardef.id = -1;
+  st->data.ST_assign.id = -1;
   return st;
 }
 

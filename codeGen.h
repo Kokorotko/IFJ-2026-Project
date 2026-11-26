@@ -12,14 +12,6 @@
 #include "codeStruct.h"
 #include "structure.h"
 
-/// @brief Záznam proměnné ve scopu CodeGenu (zásobník, nejnovější nahoře)
-typedef struct VarEntry {
-  const char *name; // jméno ze zdroje (nekopíruje se, patří AST)
-  int id;           // jedinečné číslo v rámci funkce -> LF@name$id
-  DataType type;    // typ proměnné (pro konverzi INT -> DOUBLE při přiřazení)
-  struct VarEntry *next; // další (starší) proměnná
-} VarEntry;
-
 int GenProgram(FuncDef *internalProgram, FILE *output);
 void Emit(const char *message, ...);
 void GenExpr(Expression *e);

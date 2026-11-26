@@ -57,6 +57,7 @@ typedef struct Expression {
   TokType operation;   // for unary/binary
   DataType resultType; // Data (Naplnuje Sematika)
   int line;
+  int varId;
   union // Union == Choose one of these
   {
     int intValue;
@@ -101,6 +102,7 @@ struct Statement {
     {
       char *name;
       bool isVar;
+      int id;
       DataType type; // INT, DOUBLE, STRING
       Expression *init;
     } ST_vardef;
@@ -108,6 +110,8 @@ struct Statement {
     struct // assign
     {
       char *name;
+      int id;
+      DataType type; // INT, DOUBLE, STRING
       Expression *value;
     } ST_assign;
 
