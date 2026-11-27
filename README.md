@@ -1,1 +1,0 @@
-# IFJ-2026-Project
